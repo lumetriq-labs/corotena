@@ -137,6 +137,22 @@ await run(browser, "desktop", { width: 1280, height: 800 }, async (page, shot) =
   expect("[desktop] no truncated names", m.truncated.length === 0, m.truncated.join(","));
 });
 
+{
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(URL);
+  await page.waitForTimeout(800);
+  expect("[update] current build stays put", !new globalThis.URL(page.url()).searchParams.has("v"), page.url());
+
+  await page.route("**/version.json*", route => route.fulfill({ json: { build: "newer-build" } }));
+  await page.reload();
+  await page.waitForURL(/[?&]v=newer-build/, { timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  expect("[update] stale build reloads with new URL", page.url().includes("v=newer-build"), page.url());
+  expect("[update] no reload loop", (await page.locator("#stack").count()) === 1);
+  await ctx.close();
+}
+
 await browser.close();
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed", `— screenshots in ${OUT}`);
 process.exit(failures ? 1 : 0);

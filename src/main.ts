@@ -1,6 +1,7 @@
 import "./styles.css";
 import { generateRound } from "./core/scheduler";
 import type { Priority } from "./core/types";
+import { watchForUpdates } from "./freshness";
 import { activeIds, addMember, load, removeMember, resetRounds, roster, save } from "./store";
 import { byId } from "./ui/dom";
 import { createMembersSheet } from "./ui/members";
@@ -90,3 +91,4 @@ document.addEventListener("keydown", e => {
 
 ensureCurrent();
 render();
+watchForUpdates();
