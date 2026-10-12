@@ -71,7 +71,7 @@ const sheet = createMembersSheet({
   },
   changed: regenerateLatest,
   // Wait for the sheet to slide away so the hint isn't spent behind it.
-  closed: () => setTimeout(() => showHint(), 350),
+  closed: () => setTimeout(() => showHint({ always: true }), 350),
 });
 
 function render(opts: { enter?: boolean } = {}) {
@@ -84,8 +84,9 @@ function render(opts: { enter?: boolean } = {}) {
   save(state);
 }
 
-function showHint() {
-  if (hasSwiped() || !state.rounds[state.index] || sheet.isOpen()) return;
+/** On launch the hint is only for first-timers; after editing members it's shown every time. */
+function showHint({ always = false } = {}) {
+  if ((!always && hasSwiped()) || !state.rounds[state.index] || sheet.isOpen()) return;
   stack.hint(matchMedia("(pointer: coarse)").matches ? "上にスワイプで次の試合" : "スクロールで次の試合");
 }
 

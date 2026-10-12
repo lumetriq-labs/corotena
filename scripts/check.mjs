@@ -203,7 +203,13 @@ await run(browser, "hint", { width: 390, height: 844 }, async page => {
   await swipe(page, -160);
   await page.reload();
   await page.waitForTimeout(400);
-  expect("[hint] stops after the first swipe", (await hint.count()) === 0);
+  expect("[hint] stops on launch after the first swipe", (await hint.count()) === 0);
+
+  await page.click("#openMembers");
+  await page.waitForTimeout(400);
+  await page.mouse.click(5, 5);
+  await page.waitForTimeout(700);
+  expect("[hint] still shows after closing the members sheet", (await hint.count()) === 1);
 }, { hasTouch: true, isMobile: true });
 
 await run(browser, "reset", { width: 390, height: 844 }, async page => {
