@@ -151,6 +151,30 @@ await run(browser, "about", { width: 390, height: 844 }, async page => {
 
 });
 
+await run(browser, "history", { width: 390, height: 844 }, async page => {
+  const rounds = () => page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")).rounds);
+  await setMembers(page, NAMES.slice(0, 7), 1);
+  await swipe(page, -160); await swipe(page, -160); await swipe(page, -160);
+  await swipe(page, 160); await swipe(page, 160);
+  const before = await rounds();
+  expect("[history] viewing a finished round", (await page.locator(".card.top .no").textContent()) === "2試合目");
+
+  await page.click('#priority button[data-p="variety"]');
+  await page.waitForTimeout(700);
+  let after = await rounds();
+  expect("[history] priority change keeps finished rounds",
+    JSON.stringify(after.slice(0, 3)) === JSON.stringify(before.slice(0, 3)) && after.length === 4);
+  expect("[history] and jumps to the round in play", (await page.locator(".card.top .no").textContent()) === "4試合目");
+
+  await swipe(page, 160); await swipe(page, 160);
+  await setMembers(page, ["メンバー8"], 2);
+  after = await rounds();
+  await page.screenshot({ path: `${OUT}/history-01-after-member-change.png` });
+  expect("[history] member change keeps finished rounds",
+    JSON.stringify(after.slice(0, 3)) === JSON.stringify(before.slice(0, 3)) && after[3].matches.length === 2);
+  expect("[history] no reshuffle button", (await page.locator("#reshuffleBtn").count()) === 0);
+});
+
 await run(browser, "hint", { width: 390, height: 844 }, async page => {
   const hint = page.locator(".hint");
   await setMembers(page, NAMES.slice(0, 5), 1);

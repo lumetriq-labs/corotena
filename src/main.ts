@@ -15,9 +15,14 @@ function ensureCurrent() {
   if (r) state.rounds.push(r);
 }
 
-/** Replaces the current round (and any rounds after it) with a fresh one. */
-function regenerateFromCurrent() {
-  state.rounds = state.rounds.slice(0, state.index);
+/**
+ * Rebuilds only the round still in play (the newest one) and shows it.
+ * Earlier rounds have been played and are never rewritten.
+ */
+function regenerateLatest() {
+  const live = Math.max(state.index, state.rounds.length - 1);
+  state.rounds = state.rounds.slice(0, live);
+  state.index = live;
   ensureCurrent();
   render();
 }
@@ -64,7 +69,7 @@ const sheet = createMembersSheet({
     resetAll(state);
     render();
   },
-  changed: regenerateFromCurrent,
+  changed: regenerateLatest,
   // Wait for the sheet to slide away so the hint isn't spent behind it.
   closed: () => setTimeout(() => showHint(), 350),
 });
@@ -73,7 +78,6 @@ function render(opts: { enter?: boolean } = {}) {
   const lookup = names();
   stack.render({ rounds: state.rounds, index: state.index, name: id => lookup.get(id) ?? "?" }, opts);
   byId("memberCount").textContent = String(activeIds(state).length);
-  byId<HTMLButtonElement>("reshuffleBtn").disabled = !state.rounds[state.index];
   for (const b of byId("priority").querySelectorAll<HTMLButtonElement>("button[data-p]")) {
     b.setAttribute("aria-checked", String(b.dataset.p === state.priority));
   }
@@ -90,9 +94,8 @@ byId("priority").addEventListener("click", e => {
   const p = b?.dataset.p as Priority | undefined;
   if (!p || p === state.priority) return;
   state.priority = p;
-  regenerateFromCurrent();
+  regenerateLatest();
 });
-byId("reshuffleBtn").addEventListener("click", regenerateFromCurrent);
 byId("openMembers").addEventListener("click", () => sheet.open());
 
 document.addEventListener("keydown", e => {

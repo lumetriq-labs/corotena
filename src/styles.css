@@ -144,8 +144,6 @@ header { display: flex; justify-content: space-between; align-items: center; }
 
 /* Bottom bar */
 .bar { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.icon-btn { width: 50px; height: 50px; flex: none; border-radius: 50%; font-size: 21px; cursor: pointer; color: var(--ink); }
-.icon-btn:disabled { opacity: .35; cursor: default; }
 /* Exclusive priority: one capsule, one selected segment */
 .priority { display: flex; gap: 2px; padding: 4px; border-radius: 999px; }
 .priority button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 999px; padding: 10px 13px;
