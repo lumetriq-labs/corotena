@@ -65,6 +65,8 @@ const sheet = createMembersSheet({
     render();
   },
   changed: regenerateFromCurrent,
+  // Wait for the sheet to slide away so the hint isn't spent behind it.
+  closed: () => setTimeout(() => showHint(), 350),
 });
 
 function render(opts: { enter?: boolean } = {}) {
@@ -76,13 +78,10 @@ function render(opts: { enter?: boolean } = {}) {
     b.setAttribute("aria-checked", String(b.dataset.p === state.priority));
   }
   save(state);
-  maybeHint();
 }
 
-let hinted = false;
-function maybeHint() {
-  if (hinted || hasSwiped() || !state.rounds[state.index] || sheet.isOpen()) return;
-  hinted = true;
+function showHint() {
+  if (hasSwiped() || !state.rounds[state.index] || sheet.isOpen()) return;
   stack.hint(matchMedia("(pointer: coarse)").matches ? "上にスワイプで次の試合" : "スクロールで次の試合");
 }
 
@@ -104,4 +103,5 @@ document.addEventListener("keydown", e => {
 
 ensureCurrent();
 render();
+showHint();
 watchForUpdates();

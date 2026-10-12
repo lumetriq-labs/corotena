@@ -168,6 +168,14 @@ await run(browser, "hint", { width: 390, height: 844 }, async page => {
   await page.waitForTimeout(600);
   expect("[hint] a touch dismisses it", (await hint.count()) === 0);
 
+  await page.click("#openMembers");
+  await page.waitForTimeout(400);
+  await page.mouse.click(5, 5);
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: `${OUT}/hint-02-after-sheet.png` });
+  expect("[hint] shows again after closing the members sheet", (await hint.count()) === 1);
+  await page.waitForTimeout(3200);
+
   await swipe(page, -160);
   await page.reload();
   await page.waitForTimeout(400);

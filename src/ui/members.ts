@@ -17,6 +17,8 @@ export interface MembersHandlers {
   clearAll: () => void;
   /** Called on close only if something changed while the sheet was open. */
   changed: () => void;
+  /** Called on every close, after `changed`. */
+  closed: () => void;
 }
 
 export function createMembersSheet(handlers: MembersHandlers) {
@@ -60,6 +62,7 @@ export function createMembersSheet(handlers: MembersHandlers) {
     bg.classList.remove("open");
     input.blur();
     if (dirty) handlers.changed();
+    handlers.closed();
   }
 
   const isOpen = () => sheet.classList.contains("open");
