@@ -70,6 +70,25 @@ export function save(state: State, storage: Storage = localStorage): void {
   }
 }
 
+const SWIPED_KEY = "pairloom:swiped";
+
+/** Whether this device has ever advanced a round, so the swipe hint is no longer needed. */
+export function hasSwiped(storage: Storage = localStorage): boolean {
+  try {
+    return storage.getItem(SWIPED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markSwiped(storage: Storage = localStorage): void {
+  try {
+    storage.setItem(SWIPED_KEY, "1");
+  } catch {
+    // Storage disabled: the hint simply shows again next time.
+  }
+}
+
 export function newId(): MemberId {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;

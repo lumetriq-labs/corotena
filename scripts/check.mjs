@@ -58,8 +58,8 @@ async function setMembers(page, names, courts) {
   await page.waitForTimeout(700);
 }
 
-async function run(browser, label, viewport, scenario) {
-  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2 });
+async function run(browser, label, viewport, scenario, contextOptions = {}) {
+  const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, ...contextOptions });
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
@@ -150,6 +150,29 @@ await run(browser, "about", { width: 390, height: 844 }, async page => {
   expect("[about] back returns to the app", (await page.locator("#stack").count()) === 1);
 
 });
+
+await run(browser, "hint", { width: 390, height: 844 }, async page => {
+  const hint = page.locator(".hint");
+  await setMembers(page, NAMES.slice(0, 5), 1);
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${OUT}/hint-01-shown.png` });
+  const text = (await hint.count()) ? await hint.textContent() : "";
+  expect("[hint] shows on first use with touch wording", text.includes("上にスワイプ"), text);
+  await page.waitForTimeout(3200);
+  expect("[hint] fades out on its own", (await hint.count()) === 0);
+
+  await page.reload();
+  await page.waitForTimeout(400);
+  expect("[hint] shows again until the user swipes", (await hint.count()) === 1);
+  await page.mouse.click(195, 500);
+  await page.waitForTimeout(600);
+  expect("[hint] a touch dismisses it", (await hint.count()) === 0);
+
+  await swipe(page, -160);
+  await page.reload();
+  await page.waitForTimeout(400);
+  expect("[hint] stops after the first swipe", (await hint.count()) === 0);
+}, { hasTouch: true, isMobile: true });
 
 await run(browser, "reset", { width: 390, height: 844 }, async page => {
   await setMembers(page, NAMES.slice(0, 5), 2);

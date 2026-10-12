@@ -225,5 +225,24 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
     layoutCourts();
   }
 
-  return { render, commit, isAnimating: () => animating };
+  const HINT_MS = 2600;
+  /** Briefly shows how to advance; disappears on the first touch or after a few seconds. */
+  function hint(text: string) {
+    if (stack.querySelector(".hint")) return;
+    const el = h("div", "hint glass", h("span", "hint-hand", "👆"), text);
+    el.setAttribute("role", "status");
+    stack.append(el);
+    const dismiss = () => {
+      clearTimeout(timer);
+      stack.removeEventListener("pointerdown", dismiss);
+      stack.removeEventListener("wheel", dismiss);
+      el.classList.add("out");
+      setTimeout(() => el.remove(), 400);
+    };
+    const timer = setTimeout(dismiss, HINT_MS);
+    stack.addEventListener("pointerdown", dismiss);
+    stack.addEventListener("wheel", dismiss, { passive: true });
+  }
+
+  return { render, commit, hint, isAnimating: () => animating };
 }

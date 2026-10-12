@@ -2,7 +2,7 @@ import "./styles.css";
 import { generateRound } from "./core/scheduler";
 import type { Priority } from "./core/types";
 import { watchForUpdates } from "./freshness";
-import { activeIds, addMember, load, removeMember, resetAll, resetRounds, roster, save } from "./store";
+import { activeIds, addMember, hasSwiped, load, markSwiped, removeMember, resetAll, resetRounds, roster, save } from "./store";
 import { byId } from "./ui/dom";
 import { createMembersSheet } from "./ui/members";
 import { createStack, type Direction } from "./ui/stack";
@@ -32,6 +32,7 @@ const stack = createStack(byId("stack"), {
       render();
     } else {
       if (!state.rounds[state.index]) return false;
+      markSwiped();
       state.index++;
       ensureCurrent();
       render({ enter: true });
@@ -75,6 +76,14 @@ function render(opts: { enter?: boolean } = {}) {
     b.setAttribute("aria-checked", String(b.dataset.p === state.priority));
   }
   save(state);
+  maybeHint();
+}
+
+let hinted = false;
+function maybeHint() {
+  if (hinted || hasSwiped() || !state.rounds[state.index] || sheet.isOpen()) return;
+  hinted = true;
+  stack.hint(matchMedia("(pointer: coarse)").matches ? "上にスワイプで次の試合" : "スクロールで次の試合");
 }
 
 byId("priority").addEventListener("click", e => {
