@@ -148,6 +148,22 @@ await run(browser, "about", { width: 390, height: 844 }, async page => {
   await page.click(".back");
   await page.waitForLoadState();
   expect("[about] back returns to the app", (await page.locator("#stack").count()) === 1);
+
+  await setMembers(page, NAMES.slice(0, 5), 1);
+  await page.click(".help-btn");
+  await page.waitForLoadState();
+  page.once("dialog", d => d.dismiss());
+  await page.click("#clearData");
+  await page.waitForTimeout(300);
+  expect("[about] cancel keeps data", await page.evaluate(() => localStorage.getItem("pairloom:v1") !== null));
+
+  page.once("dialog", d => d.accept());
+  await page.click("#clearData");
+  await page.waitForURL(u => !u.pathname.endsWith("about.html"));
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${OUT}/about-03-after-clear.png` });
+  expect("[about] clear returns to an empty app", (await page.locator(".empty").count()) === 1
+    && (await page.locator("#memberCount").textContent()) === "0");
 });
 
 {

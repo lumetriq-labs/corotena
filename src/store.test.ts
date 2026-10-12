@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeIds, addMember, initialState, parseState, removeMember, resetRounds } from "./store";
+import { activeIds, addMember, clear, initialState, load, parseState, removeMember, resetRounds, save } from "./store";
 
 describe("parseState", () => {
   it("rejects malformed data", () => {
@@ -26,6 +26,30 @@ describe("parseState", () => {
     expect(parsed?.rounds).toEqual(s.rounds);
     expect(parsed?.courts).toBe(4);
     expect(parsed?.index).toBe(1);
+  });
+});
+
+describe("load / save / clear", () => {
+  const memory = (): Storage => {
+    const m = new Map<string, string>();
+    return {
+      get length() { return m.size; },
+      clear: () => m.clear(),
+      getItem: k => m.get(k) ?? null,
+      key: i => [...m.keys()][i] ?? null,
+      removeItem: k => { m.delete(k); },
+      setItem: (k, v) => { m.set(k, v); },
+    };
+  };
+
+  it("restores what was saved and starts fresh after clear", () => {
+    const storage = memory();
+    const s = initialState();
+    addMember(s, "A");
+    save(s, storage);
+    expect(load(storage).members.map(m => m.name)).toEqual(["A"]);
+    clear(storage);
+    expect(load(storage)).toEqual(initialState());
   });
 });
 
