@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#5d6366" />
+  <meta name="description" content="pairloom が組み合わせを決めるしくみ" />
+  <title>組み合わせの決め方 — pairloom</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎾</text></svg>" />
+</head>
+<body class="doc">
+  <div class="backdrop" aria-hidden="true">
+    <div class="blob ball"></div><div class="blob hard"></div><div class="blob grass"></div><div class="blob clay"></div>
+  </div>
+  <main class="doc-main">
+    <a class="back glass" href="./">← 戻る</a>
+    <h1>組み合わせの決め方</h1>
+
+    <section class="glass">
+      <h2>いつも守ること</h2>
+      <p><strong>全員の試合数をそろえます。</strong>どちらのルールを選んでも、試合数がいちばん多い人と少ない人の差が1試合を超えないようにします。</p>
+      <p>そのうえで、画面下で選んだルールをできるだけ守ります。選ばなかったほうのルールも、優先順位が下がるだけで、できる範囲で守ります。</p>
+    </section>
+
+    <section class="glass">
+      <h2>🪑 休み連続なし</h2>
+      <p>同じ人が2試合続けて休まないことを優先します。</p>
+      <ol>
+        <li>まず、試合数の差がいちばん小さくなる組み合わせに絞ります。</li>
+        <li>その中から、<strong>前の試合で休んだ人がまた休みにならない</strong>組み合わせを選びます。</li>
+        <li>それでも候補が複数あれば、前の試合と同じペアを避け、これまで組んだ回数が少ない人どうしを組ませます。</li>
+        <li>最後に、同じ相手と何度も対戦しないようにします。</li>
+      </ol>
+      <p class="note">たとえば7人・1面なら、毎試合3人が休みます。前の試合で休んだ3人は、次の試合には必ず入ります。</p>
+    </section>
+
+    <section class="glass">
+      <h2>🤝 ペアかぶりなし</h2>
+      <p>いろいろな人とペアを組めることを優先します。</p>
+      <ol>
+        <li>まず、試合数の差がいちばん小さくなる組み合わせに絞ります。</li>
+        <li>その中から、<strong>前の試合と同じペアにならない</strong>組み合わせを選びます。</li>
+        <li>さらに、<strong>これまで組んだ回数が少ない人どうし</strong>を組ませます。同じ人と何度も組むほど避けられやすくなるので、特定のペアばかり続くことはありません。</li>
+        <li>それでも候補が複数あれば、2試合続けて休む人がいない組み合わせを選びます。</li>
+        <li>最後に、同じ相手と何度も対戦しないようにします。</li>
+      </ol>
+    </section>
+
+    <section class="glass">
+      <h2>どうやって選んでいるか</h2>
+      <p>人数とコート数で考えられる組み合わせを点数にして比べ、いちばん条件に合うものを選びます。</p>
+      <ul>
+        <li><strong>組み合わせが少ないとき</strong>（例：7人・1面は105通り）は、全部を調べて最良のものを選びます。</li>
+        <li><strong>組み合わせがとても多いとき</strong>（例：16人・4面）は、入れ替えを繰り返して良い組み合わせを探します。この場合、最良に近いものになります。</li>
+        <li>同じくらい良い組み合わせが複数あるときは、その中からランダムに選びます。<span class="key">⟳</span>を押すと別の候補に変わります。</li>
+      </ul>
+    </section>
+
+    <section class="glass">
+      <h2>できないこと</h2>
+      <ul>
+        <li><strong>休む人が試合に出る人より多いと、連続休みは避けられません。</strong>たとえば9人・1面では毎試合5人が休むので、前回休んだ5人のうち誰かはまた休みになります。それでも試合数の差は1以内に保ちます。</li>
+        <li>決めるのは次の1試合だけです。何試合も先まで見越した計画は立てません。メンバーやコート数を途中で変えても、それまでの記録をもとに次の試合を決めます。</li>
+      </ul>
+    </section>
+
+    <section class="glass">
+      <h2>画面の見かた</h2>
+      <ul class="legend">
+        <li><span class="chip-sample warn">名前</span>休みの欄でオレンジ色の名前は、2試合続けて休みの人です。</li>
+        <li><span class="player-sample">名前</span>名前の右上のオレンジ色の点は、以前にも組んだことがあるペアです。</li>
+        <li><span class="team a"></span><span class="team b"></span>名前の下の線の色（オレンジ／黄）でチームを表します。</li>
+      </ul>
+    </section>
+
+    <section class="glass">
+      <h2>データの保存</h2>
+      <p>メンバーと試合の記録は、この端末のブラウザの中だけに保存されます。どこにも送信されません。</p>
+      <p class="note">iPhoneのSafariでは、7日間開かないと記録が消えることがあります。ホーム画面に追加しておくと消えません。</p>
+    </section>
+  </main>
+  <script type="module" src="/src/about.ts"></script>
+</body>
+</html>

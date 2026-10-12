@@ -137,6 +137,19 @@ await run(browser, "desktop", { width: 1280, height: 800 }, async (page, shot) =
   expect("[desktop] no truncated names", m.truncated.length === 0, m.truncated.join(","));
 });
 
+await run(browser, "about", { width: 390, height: 844 }, async page => {
+  await page.click(".help-btn");
+  await page.waitForLoadState();
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: `${OUT}/about-01-top.png` });
+  await page.screenshot({ path: `${OUT}/about-02-full.png`, fullPage: true });
+  expect("[about] help link opens the page", (await page.locator("h1").textContent()) === "組み合わせの決め方");
+  expect("[about] page scrolls", await page.evaluate(() => document.documentElement.scrollHeight > innerHeight));
+  await page.click(".back");
+  await page.waitForLoadState();
+  expect("[about] back returns to the app", (await page.locator("#stack").count()) === 1);
+});
+
 {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();

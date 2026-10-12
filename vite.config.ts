@@ -5,6 +5,11 @@ const buildId = process.env.GITHUB_SHA?.slice(0, 12) ?? Date.now().toString(36);
 export default defineConfig({
   // Relative asset URLs so the build works under the GitHub Pages sub-path (/pairloom/).
   base: "./",
+  build: {
+    rollupOptions: {
+      input: { main: "index.html", about: "about.html" },
+    },
+  },
   define: {
     __BUILD_ID__: JSON.stringify(buildId),
   },
