@@ -8,6 +8,8 @@
   --radius: 26px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* No double-tap zoom: the swipe cards use touch-action:none, so a zoomed page can't be pinched back. */
+html { touch-action: manipulation; }
 html, body { margin: 0; color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; }
 body { min-height: 100dvh; display: flex; justify-content: center; overscroll-behavior: none; overflow: hidden;
@@ -162,5 +164,7 @@ button.glass:active { scale: .96; }
 .seg { display: flex; background: rgba(0,0,0,.06); border-radius: 14px; padding: 3px; gap: 3px; }
 .seg button { border: none; background: transparent; padding: 0 12px; border-radius: 11px; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--muted); }
 .seg button.on { background: rgba(255,255,255,.85); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
-.reset { display: block; margin: 14px auto 0; border: none; background: none; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 10px; }
+.sheet-actions { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
+.reset.danger { color: #c62a20; }
+.reset { display: block; border: none; background: none; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 10px; }
 .reset[hidden] { display: none; }

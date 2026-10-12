@@ -149,21 +149,38 @@ await run(browser, "about", { width: 390, height: 844 }, async page => {
   await page.waitForLoadState();
   expect("[about] back returns to the app", (await page.locator("#stack").count()) === 1);
 
-  await setMembers(page, NAMES.slice(0, 5), 1);
-  await page.click(".help-btn");
-  await page.waitForLoadState();
+});
+
+await run(browser, "reset", { width: 390, height: 844 }, async page => {
+  await setMembers(page, NAMES.slice(0, 5), 2);
+  await swipe(page, -160);
+  await page.click("#openMembers");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT}/reset-01-sheet.png` });
+
   page.once("dialog", d => d.dismiss());
-  await page.click("#clearData");
+  await page.click("#clearBtn");
   await page.waitForTimeout(300);
-  expect("[about] cancel keeps data", await page.evaluate(() => localStorage.getItem("pairloom:v1") !== null));
+  expect("[reset] cancel keeps members", (await page.locator(".chip").count()) === 5);
 
   page.once("dialog", d => d.accept());
-  await page.click("#clearData");
-  await page.waitForURL(u => !u.pathname.endsWith("about.html"));
-  await page.waitForTimeout(800);
-  await page.screenshot({ path: `${OUT}/about-03-after-clear.png` });
-  expect("[about] clear returns to an empty app", (await page.locator(".empty").count()) === 1
-    && (await page.locator("#memberCount").textContent()) === "0");
+  await page.click("#clearBtn");
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: `${OUT}/reset-02-cleared.png` });
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")));
+  expect("[reset] clears members, rounds and settings", (await page.locator(".chip").count()) === 0
+    && stored.members.length === 0 && stored.rounds.length === 0 && stored.courts === 1);
+  expect("[reset] sheet stays open for new members", await page.locator("#sheet.open").count() === 1);
+
+  for (const name of ["A", "B", "C", "D"]) {
+    await page.fill("#addInput", name);
+    await page.press("#addInput", "Enter");
+  }
+  await page.mouse.click(5, 5);
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: `${OUT}/reset-03-new-group.png` });
+  const title = await page.locator(".card.top .no").textContent();
+  expect("[reset] new group starts at round 1", title === "1試合目", title);
 });
 
 {

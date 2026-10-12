@@ -70,14 +70,6 @@ export function save(state: State, storage: Storage = localStorage): void {
   }
 }
 
-export function clear(storage: Storage = localStorage): void {
-  try {
-    storage.removeItem(KEY);
-  } catch {
-    // Storage disabled: nothing was persisted.
-  }
-}
-
 export function newId(): MemberId {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
@@ -113,6 +105,11 @@ export function removeMember(s: State, id: MemberId): void {
   } else {
     s.members = s.members.filter(x => x.id !== id);
   }
+}
+
+/** Back to a fresh start (no members, no rounds, default settings). */
+export function resetAll(s: State): void {
+  Object.assign(s, initialState());
 }
 
 export function resetRounds(s: State): void {

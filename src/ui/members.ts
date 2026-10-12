@@ -14,6 +14,7 @@ export interface MembersHandlers {
   add: (name: string) => boolean;
   setCourts: (n: number) => void;
   reset: () => void;
+  clearAll: () => void;
   /** Called on close only if something changed while the sheet was open. */
   changed: () => void;
 }
@@ -21,6 +22,7 @@ export interface MembersHandlers {
 export function createMembersSheet(handlers: MembersHandlers) {
   const sheet = byId("sheet"), bg = byId("sheetBg"), chips = byId("chips");
   const input = byId<HTMLInputElement>("addInput"), resetBtn = byId<HTMLButtonElement>("resetBtn");
+  const clearBtn = byId<HTMLButtonElement>("clearBtn");
   let dirty = false;
 
   function render() {
@@ -40,6 +42,7 @@ export function createMembersSheet(handlers: MembersHandlers) {
       b.classList.toggle("on", Number(b.dataset.v) === v.courts);
     }
     resetBtn.hidden = !v.hasRounds;
+    clearBtn.hidden = !v.hasRounds && v.members.length === 0;
   }
 
   const mutate = (fn: () => void) => { fn(); dirty = true; render(); };
@@ -87,6 +90,15 @@ export function createMembersSheet(handlers: MembersHandlers) {
     handlers.reset();
     dirty = false;
     render();
+  });
+
+  // Stays open so the next group can be entered right away.
+  clearBtn.addEventListener("click", () => {
+    if (!confirm("メンバーと試合の記録をすべて消しますか？元に戻せません。")) return;
+    handlers.clearAll();
+    dirty = false;
+    render();
+    input.focus();
   });
 
   bg.addEventListener("click", close);

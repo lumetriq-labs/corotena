@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#5d6366" />
   <meta name="description" content="テニスのダブルスの組み合わせをスワイプで決める" />
   <title>pairloom</title>
@@ -42,7 +42,10 @@
         <button type="button" data-v="4">4面</button>
       </div>
     </form>
-    <button type="button" class="reset" id="resetBtn">↺ 1試合目から</button>
+    <div class="sheet-actions">
+      <button type="button" class="reset" id="resetBtn">↺ 1試合目から</button>
+      <button type="button" class="reset danger" id="clearBtn">🗑 すべて消す</button>
+    </div>
   </div>
 
   <script type="module" src="/src/main.ts"></script>

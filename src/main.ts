@@ -2,7 +2,7 @@ import "./styles.css";
 import { generateRound } from "./core/scheduler";
 import type { Priority } from "./core/types";
 import { watchForUpdates } from "./freshness";
-import { activeIds, addMember, load, removeMember, resetRounds, roster, save } from "./store";
+import { activeIds, addMember, load, removeMember, resetAll, resetRounds, roster, save } from "./store";
 import { byId } from "./ui/dom";
 import { createMembersSheet } from "./ui/members";
 import { createStack, type Direction } from "./ui/stack";
@@ -57,6 +57,10 @@ const sheet = createMembersSheet({
   reset() {
     resetRounds(state);
     ensureCurrent();
+    render();
+  },
+  clearAll() {
+    resetAll(state);
     render();
   },
   changed: regenerateFromCurrent,

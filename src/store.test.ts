@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeIds, addMember, clear, initialState, load, parseState, removeMember, resetRounds, save } from "./store";
+import { activeIds, addMember, initialState, load, parseState, removeMember, resetAll, resetRounds, save } from "./store";
 
 describe("parseState", () => {
   it("rejects malformed data", () => {
@@ -29,7 +29,7 @@ describe("parseState", () => {
   });
 });
 
-describe("load / save / clear", () => {
+describe("load / save / resetAll", () => {
   const memory = (): Storage => {
     const m = new Map<string, string>();
     return {
@@ -42,13 +42,15 @@ describe("load / save / clear", () => {
     };
   };
 
-  it("restores what was saved and starts fresh after clear", () => {
+  it("restores what was saved and starts fresh after resetAll", () => {
     const storage = memory();
     const s = initialState();
     addMember(s, "A");
+    s.courts = 2;
     save(s, storage);
     expect(load(storage).members.map(m => m.name)).toEqual(["A"]);
-    clear(storage);
+    resetAll(s);
+    save(s, storage);
     expect(load(storage)).toEqual(initialState());
   });
 });
