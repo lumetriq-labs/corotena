@@ -1,0 +1,164 @@
+:root {
+  --ink: #10201a;
+  --muted: rgba(16, 32, 26, .62);
+  --team-a: #ff7a45;
+  --team-b: #ffd23f;
+  --warn: #ff9f0a;
+  --strip: 52px;
+  --radius: 26px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+body { min-height: 100dvh; display: flex; justify-content: center; overscroll-behavior: none; overflow: hidden;
+  background: #5d6366; }
+button { font-family: inherit; }
+
+/* Soft backdrop so the glass has something to refract */
+.backdrop { position: fixed; inset: 0; overflow: hidden; z-index: -1; }
+.blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; animation: drift 22s ease-in-out infinite alternate; }
+.blob.ball  { width: 60vmax; height: 60vmax; left: -20vmax; top: -18vmax; background: #73765a; }
+.blob.hard  { width: 55vmax; height: 55vmax; right: -22vmax; top: 18vh; background: #545e6b; animation-delay: -7s; }
+.blob.grass { width: 50vmax; height: 50vmax; left: -12vmax; bottom: -22vmax; background: #55625b; animation-delay: -13s; }
+.blob.clay  { width: 28vmax; height: 28vmax; right: 0; bottom: 4vh; background: #75665f; opacity: .35; animation-delay: -4s; }
+@keyframes drift { to { translate: 6vmax 8vmax; scale: 1.15; } }
+@media (prefers-reduced-motion: reduce) { .blob { animation: none; } }
+
+/* Liquid-glass material */
+.glass {
+  background: linear-gradient(150deg, rgba(255,255,255,.62), rgba(255,255,255,.3) 55%, rgba(255,255,255,.4));
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+  backdrop-filter: blur(24px) saturate(130%);
+  border: 1px solid rgba(255,255,255,.6);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,.95),
+    inset 0 -1px 1px rgba(255,255,255,.35),
+    inset 0 0 18px rgba(255,255,255,.25),
+    0 12px 32px rgba(20, 50, 70, .18);
+}
+
+.app { width: 100%; max-width: 440px; height: 100dvh; display: flex; flex-direction: column; gap: 14px;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
+body[data-cols="2"] .app { max-width: 820px; }
+body[data-cols="3"] .app, body[data-cols="4"] .app { max-width: 1240px; }
+
+header { display: flex; justify-content: flex-end; }
+.members-btn { border-radius: 999px; padding: 9px 16px; font-size: 15px; font-weight: 800; color: var(--ink); cursor: pointer; }
+
+/* Stack: older rounds recede behind, current card is fully visible at the bottom */
+.stack { position: relative; flex: 1; min-height: 0; overflow: hidden; border-radius: var(--radius); container-type: size;
+  --cols: 1; --rows: 1; }
+/* Card size is derived from the court: the largest court of --ratio that fits a --cols x --rows grid. */
+.card {
+  /* --edge: the glass border (1px each side) plus 1px slack so flex-wrap never breaks a row early */
+  --pad: 12px; --gap: 10px; --bottom: 14px; --ratio: .62; --edge: 3px;
+  --court-h: min(
+    calc((100cqh - var(--strip) * 4 - var(--bottom) - (var(--rows) - 1) * var(--gap)) / var(--rows)),
+    calc((100cqw - var(--pad) * 2 - var(--edge) - (var(--cols) - 1) * var(--gap)) / var(--cols) / var(--ratio)));
+  --card-h: calc(var(--court-h) * var(--rows) + (var(--rows) - 1) * var(--gap) + var(--strip) + var(--bottom));
+  position: absolute; left: 0; right: 0; margin-inline: auto;
+  top: calc(100cqh - var(--strip) * 3 - var(--card-h));
+  height: var(--card-h);
+  width: max(min(100cqw, 340px), calc(var(--court-h) * var(--ratio) * var(--cols) + var(--pad) * 2 + (var(--cols) - 1) * var(--gap) + var(--edge)));
+  color: var(--ink); border-radius: var(--radius);
+  display: flex; flex-direction: column; overflow: hidden; transform-origin: 50% 0;
+  transition: transform .45s cubic-bezier(.2,.8,.2,1), opacity .45s; will-change: transform;
+  user-select: none; -webkit-user-select: none; touch-action: none; }
+.card::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(120% 50% at 15% 0%, rgba(255,255,255,.55), transparent 60%); }
+.card > * { position: relative; }
+.card.dragging { transition: none; }
+.card.top { cursor: grab; }
+.card.top:active { cursor: grabbing; }
+.card:not(.top) { cursor: pointer; }
+.card.swap .courts { animation: swap .35s ease-out; }
+@keyframes swap { from { transform: scale(.94); opacity: .3; } }
+.strip { height: var(--strip); flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+.strip .no { flex: none; white-space: nowrap; font-size: 22px; font-weight: 900; letter-spacing: .01em; }
+.strip .no small { font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 2px; }
+.strip .rest { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; }
+.strip .rest span { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.strip .rest span.warn { background: var(--warn); color: #1c1c1e; }
+
+.courts { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; gap: var(--gap); justify-content: center; align-content: flex-start;
+  padding: 0 var(--pad) var(--bottom); transition: opacity .3s; }
+/* Older cards show only their strip; their courts would otherwise ghost through the translucent cards in front */
+.card:not(.top) .courts { opacity: 0; }
+/* Glass court. Nested backdrop-filter can't see past the card's own glass, so depth comes from tinted layers + specular light. */
+.court { position: relative; flex: none; height: var(--court-h); width: calc(var(--court-h) * var(--ratio));
+  padding: calc(var(--court-h) * .015) calc(var(--court-h) * .03); }
+.court-in::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2; border-radius: inherit;
+  background: linear-gradient(118deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,.08) 28%, transparent 45%, transparent 72%, rgba(255,255,255,.14) 100%); }
+.court-in { position: relative; width: 100%; height: 100%; border-radius: 6px;
+  background: linear-gradient(175deg, rgba(120, 180, 255, .62), rgba(40, 100, 210, .48) 55%, rgba(30, 80, 190, .58));
+  border: 2px solid rgba(255,255,255,.92);
+  box-shadow: 0 0 10px rgba(255,255,255,.45), inset 0 0 8px rgba(255,255,255,.35), inset 0 -14px 30px rgba(10, 40, 120, .2); }
+.ln { position: absolute; background: rgba(255,255,255,.92); box-shadow: 0 0 6px rgba(255,255,255,.7); }
+.ln.single-l { left: 12.5%; top: 0; bottom: 0; width: 2px; }
+.ln.single-r { right: 12.5%; top: 0; bottom: 0; width: 2px; }
+.ln.svc-t { left: 12.5%; right: 12.5%; top: 23.1%; height: 2px; }
+.ln.svc-b { left: 12.5%; right: 12.5%; top: 76.9%; height: 2px; }
+.ln.center { left: calc(50% - 1px); top: 23.1%; height: 53.8%; width: 2px; }
+.ln.mark-t { left: calc(50% - 1px); top: 0; height: 2.5%; width: 2px; }
+.ln.mark-b { left: calc(50% - 1px); bottom: 0; height: 2.5%; width: 2px; }
+.net { position: absolute; left: 0; right: 0; top: calc(50% - 2px); height: 4px; border-radius: 2px;
+  background: #fff; box-shadow: 0 2px 4px rgba(0, 30, 60, .3); }
+
+.player { position: absolute; z-index: 3; transform: translate(-50%, -50%); color: var(--ink);
+  background: rgba(255,255,255,.82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.9);
+  font-weight: 800; font-size: clamp(10px, calc(var(--court-h) * .036), 17px); padding: .4em .6em; border-radius: .7em; white-space: nowrap;
+  max-width: 46%; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: inset 0 -3px 0 var(--c), 0 4px 12px rgba(0,0,0,.22); }
+.player.a { --c: var(--team-a); }
+.player.b { --c: var(--team-b); }
+.player.again::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+.p-a1 { left: 31%; top: 36.5%; } .p-a2 { left: 69%; top: 36.5%; }
+.p-b1 { left: 31%; top: 63.5%; } .p-b2 { left: 69%; top: 63.5%; }
+/* Narrow courts or long names: stack each pair vertically so names can use the full court width */
+.stack.narrow .player { max-width: 94%; font-size: 11px; }
+.stack.narrow .p-a1 { left: 50%; top: 16%; } .stack.narrow .p-a2 { left: 50%; top: 36%; }
+.stack.narrow .p-b1 { left: 50%; top: 64%; } .stack.narrow .p-b2 { left: 50%; top: 84%; }
+.empty { position: absolute; left: 0; right: 0; bottom: 0; height: calc(100% - var(--strip) * 3); z-index: 1000;
+  display: grid; place-items: center; text-align: center; color: var(--muted); width: 100%;
+  border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer; }
+.empty span { display: block; font-size: 40px; margin-bottom: 6px; }
+
+/* Bottom bar */
+.bar { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.icon-btn { width: 50px; height: 50px; flex: none; border-radius: 50%; font-size: 21px; cursor: pointer; color: var(--ink); }
+.icon-btn:disabled { opacity: .35; cursor: default; }
+/* Exclusive priority: one capsule, one selected segment */
+.priority { display: flex; gap: 2px; padding: 4px; border-radius: 999px; }
+.priority button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 999px; padding: 10px 13px;
+  font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: .2s; }
+.priority button[aria-checked="true"] { color: #0b4d2a;
+  background: linear-gradient(150deg, rgba(120, 230, 150, .6), rgba(40, 170, 90, .32)); border-color: rgba(200, 255, 215, .85);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.8), 0 2px 6px rgba(0, 60, 30, .15); }
+.priority button:active { scale: .96; }
+button.glass:active { scale: .96; }
+
+/* Members sheet */
+.sheet-bg { position: fixed; inset: 0; background: rgba(10, 30, 25, .25); opacity: 0; pointer-events: none; transition: .25s; z-index: 2000; }
+.sheet-bg.open { opacity: 1; pointer-events: auto; }
+.sheet { position: fixed; left: 50%; bottom: 10px; width: calc(100% - 20px); max-width: 420px; transform: translate(-50%, 115%);
+  border-radius: 30px; padding: 10px 18px calc(20px + env(safe-area-inset-bottom));
+  transition: transform .35s cubic-bezier(.2,.8,.2,1); z-index: 2001; max-height: 80dvh; overflow: auto;
+  background: linear-gradient(150deg, rgba(255,255,255,.75), rgba(255,255,255,.5)); }
+.sheet.open { transform: translate(-50%, 0); }
+.grabber { width: 40px; height: 5px; background: rgba(0,0,0,.18); border-radius: 99px; margin: 0 auto 16px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.chips:empty { display: none; }
+.chip { display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 14px; border-radius: 999px; font-weight: 800; font-size: 15px; cursor: pointer;
+  color: #0b4d2a; background: rgba(80, 200, 120, .3); border: 1px solid rgba(255,255,255,.8);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.9); }
+.chip.off { color: var(--muted); background: rgba(255,255,255,.35); }
+.chip .x { width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(0,0,0,.07); cursor: pointer; font-size: 11px; color: inherit; }
+.sheet-foot { display: flex; gap: 8px; }
+.sheet-foot input { flex: 1; min-width: 0; border: 1px solid rgba(255,255,255,.8); background: rgba(255,255,255,.5);
+  border-radius: 14px; padding: 12px; font-size: 16px; color: var(--ink); outline: none; }
+.seg { display: flex; background: rgba(0,0,0,.06); border-radius: 14px; padding: 3px; gap: 3px; }
+.seg button { border: none; background: transparent; padding: 0 12px; border-radius: 11px; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--muted); }
+.seg button.on { background: rgba(255,255,255,.85); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.reset { display: block; margin: 14px auto 0; border: none; background: none; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 10px; }
+.reset[hidden] { display: none; }

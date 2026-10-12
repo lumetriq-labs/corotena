@@ -1,0 +1,96 @@
+import type { Member, MemberId } from "../core/types";
+import { byId, h } from "./dom";
+
+export interface MembersView {
+  members: readonly Member[];
+  courts: number;
+  hasRounds: boolean;
+}
+
+export interface MembersHandlers {
+  view: () => MembersView;
+  toggle: (id: MemberId) => void;
+  remove: (id: MemberId) => void;
+  add: (name: string) => boolean;
+  setCourts: (n: number) => void;
+  reset: () => void;
+  /** Called on close only if something changed while the sheet was open. */
+  changed: () => void;
+}
+
+export function createMembersSheet(handlers: MembersHandlers) {
+  const sheet = byId("sheet"), bg = byId("sheetBg"), chips = byId("chips");
+  const input = byId<HTMLInputElement>("addInput"), resetBtn = byId<HTMLButtonElement>("resetBtn");
+  let dirty = false;
+
+  function render() {
+    const v = handlers.view();
+    chips.replaceChildren(...v.members.map(m => {
+      const x = h("button", "x", "✕") as HTMLButtonElement;
+      x.type = "button";
+      x.dataset.del = m.id;
+      x.setAttribute("aria-label", `${m.name}を削除`);
+      const chip = h("span", `chip${m.active ? "" : " off"}`, m.name, x);
+      chip.dataset.id = m.id;
+      chip.setAttribute("role", "checkbox");
+      chip.setAttribute("aria-checked", String(m.active));
+      return chip;
+    }));
+    for (const b of byId("courtSeg").querySelectorAll<HTMLButtonElement>("button")) {
+      b.classList.toggle("on", Number(b.dataset.v) === v.courts);
+    }
+    resetBtn.hidden = !v.hasRounds;
+  }
+
+  const mutate = (fn: () => void) => { fn(); dirty = true; render(); };
+
+  function open() {
+    dirty = false;
+    render();
+    sheet.classList.add("open");
+    bg.classList.add("open");
+  }
+
+  function close() {
+    if (!isOpen()) return;
+    sheet.classList.remove("open");
+    bg.classList.remove("open");
+    input.blur();
+    if (dirty) handlers.changed();
+  }
+
+  const isOpen = () => sheet.classList.contains("open");
+
+  chips.addEventListener("click", e => {
+    const target = e.target as HTMLElement;
+    const del = target.closest<HTMLElement>("[data-del]");
+    if (del) { mutate(() => handlers.remove(del.dataset.del!)); return; }
+    const chip = target.closest<HTMLElement>(".chip");
+    if (chip) mutate(() => handlers.toggle(chip.dataset.id!));
+  });
+
+  byId("addForm").addEventListener("submit", e => {
+    e.preventDefault();
+    if (!handlers.add(input.value)) return;
+    input.value = "";
+    dirty = true;
+    render();
+  });
+
+  byId("courtSeg").addEventListener("click", e => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-v]");
+    if (b) mutate(() => handlers.setCourts(Number(b.dataset.v)));
+  });
+
+  resetBtn.addEventListener("click", () => {
+    if (!confirm("試合の履歴を消して1試合目からやり直しますか？")) return;
+    handlers.reset();
+    dirty = false;
+    render();
+  });
+
+  bg.addEventListener("click", close);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+
+  return { open, close, isOpen };
+}

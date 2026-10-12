@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>ダブルス組み合わせ（UIモック）</title>
+<style>
+  :root {
+    --ink: #10201a;
+    --muted: rgba(16, 32, 26, .62);
+    --accent: #1f8a4c;
+    --team-a: #ff7a45;
+    --team-b: #ffd23f;
+    --warn: #ff9f0a;
+    --strip: 52px;
+    --radius: 26px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+  body { min-height: 100dvh; display: flex; justify-content: center; overscroll-behavior: none; overflow: hidden;
+    background: #5d6366; }
+
+  /* Colorful backdrop so the glass has something to refract */
+  .backdrop { position: fixed; inset: 0; overflow: hidden; z-index: -1; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; animation: drift 22s ease-in-out infinite alternate; }
+  .blob.ball  { width: 60vmax; height: 60vmax; left: -20vmax; top: -18vmax; background: #73765a; }
+  .blob.hard  { width: 55vmax; height: 55vmax; right: -22vmax; top: 18vh; background: #545e6b; animation-delay: -7s; }
+  .blob.grass { width: 50vmax; height: 50vmax; left: -12vmax; bottom: -22vmax; background: #55625b; animation-delay: -13s; }
+  .blob.clay  { width: 28vmax; height: 28vmax; right: 0; bottom: 4vh; background: #75665f; opacity: .35; animation-delay: -4s; }
+  @keyframes drift { to { translate: 6vmax 8vmax; scale: 1.15; } }
+
+  /* Liquid-glass material */
+  .glass {
+    background: linear-gradient(150deg, rgba(255,255,255,.62), rgba(255,255,255,.3) 55%, rgba(255,255,255,.4));
+    -webkit-backdrop-filter: blur(24px) saturate(130%);
+    backdrop-filter: blur(24px) saturate(130%);
+    border: 1px solid rgba(255,255,255,.6);
+    box-shadow:
+      inset 0 1px 1px rgba(255,255,255,.95),
+      inset 0 -1px 1px rgba(255,255,255,.35),
+      inset 0 0 18px rgba(255,255,255,.25),
+      0 12px 32px rgba(20, 50, 70, .18);
+  }
+
+  .app { width: 100%; max-width: 440px; height: 100dvh; padding: 12px 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+  body[data-cols="2"] .app { max-width: 820px; }
+  body[data-cols="3"] .app, body[data-cols="4"] .app { max-width: 1240px; }
+
+  header { display: flex; justify-content: flex-end; }
+  .members-btn { border-radius: 999px; padding: 9px 16px; font-size: 15px; font-weight: 800; color: var(--ink); cursor: pointer; }
+
+  /* Stack: older rounds recede behind, current card is fully visible at the bottom */
+  .stack { position: relative; flex: 1; min-height: 0; overflow: hidden; border-radius: var(--radius); container-type: size;
+    --cols: 1; --rows: 1; }
+  /* Card size is derived from the court: the largest real-ratio court that fits a --cols x --rows grid. */
+  .card {
+    /* --edge: the glass border (1px each side) plus 1px slack so flex-wrap never breaks a row early */
+    --pad: 12px; --gap: 10px; --bottom: 14px; --ratio: .62; --edge: 3px;
+    --court-h: min(
+      calc((100cqh - var(--strip) * 4 - var(--bottom) - (var(--rows) - 1) * var(--gap)) / var(--rows)),
+      calc((100cqw - var(--pad) * 2 - var(--edge) - (var(--cols) - 1) * var(--gap)) / var(--cols) / var(--ratio)));
+    --card-h: calc(var(--court-h) * var(--rows) + (var(--rows) - 1) * var(--gap) + var(--strip) + var(--bottom));
+    position: absolute; left: 0; right: 0; margin-inline: auto;
+    top: calc(100cqh - var(--strip) * 3 - var(--card-h));
+    height: var(--card-h);
+    width: max(min(100cqw, 340px), calc(var(--court-h) * var(--ratio) * var(--cols) + var(--pad) * 2 + (var(--cols) - 1) * var(--gap) + var(--edge)));
+    color: var(--ink); border-radius: var(--radius);
+    display: flex; flex-direction: column; overflow: hidden; transform-origin: 50% 0;
+    transition: transform .45s cubic-bezier(.2,.8,.2,1), opacity .45s; will-change: transform;
+    user-select: none; -webkit-user-select: none; touch-action: none; }
+  .card::before { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+    background: radial-gradient(120% 50% at 15% 0%, rgba(255,255,255,.55), transparent 60%); }
+  .card > * { position: relative; }
+  .card.dragging { transition: none; }
+  .card.top { cursor: grab; }
+  .card.top:active { cursor: grabbing; }
+  .card:not(.top) { cursor: pointer; }
+  .card.swap .courts { animation: swap .35s ease-out; }
+  @keyframes swap { from { transform: scale(.94); opacity: .3; } }
+  .strip { height: var(--strip); flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
+  .strip .no { font-size: 22px; font-weight: 900; letter-spacing: .01em; }
+  .strip .no small { font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 2px; }
+  .strip .rest { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; }
+  .strip .rest span { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .strip .rest span.warn { background: var(--warn); color: #1c1c1e; }
+
+  .courts { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; gap: var(--gap); justify-content: center; align-content: flex-start;
+    padding: 0 var(--pad) var(--bottom); transition: opacity .3s; }
+  /* Older cards show only their strip; their courts would otherwise ghost through the translucent cards in front */
+  .card:not(.top) .courts { opacity: 0; }
+  /* Glass court. Nested backdrop-filter can't see past the card's own glass, so depth comes from tinted layers + specular light. */
+  .court { position: relative; flex: none; height: var(--court-h); width: calc(var(--court-h) * var(--ratio));
+    padding: calc(var(--court-h) * .015) calc(var(--court-h) * .03); }
+  .court-in::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2; border-radius: inherit;
+    background: linear-gradient(118deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,.08) 28%, transparent 45%, transparent 72%, rgba(255,255,255,.14) 100%); }
+  .court-in { position: relative; width: 100%; height: 100%; border-radius: 6px;
+    background: linear-gradient(175deg, rgba(120, 180, 255, .62), rgba(40, 100, 210, .48) 55%, rgba(30, 80, 190, .58));
+    border: 2px solid rgba(255,255,255,.92);
+    box-shadow: 0 0 10px rgba(255,255,255,.45), inset 0 0 8px rgba(255,255,255,.35), inset 0 -14px 30px rgba(10, 40, 120, .2); }
+  .ln { position: absolute; background: rgba(255,255,255,.92); box-shadow: 0 0 6px rgba(255,255,255,.7); }
+  .ln.single-l { left: 12.5%; top: 0; bottom: 0; width: 2px; }
+  .ln.single-r { right: 12.5%; top: 0; bottom: 0; width: 2px; }
+  .ln.svc-t { left: 12.5%; right: 12.5%; top: 23.1%; height: 2px; }
+  .ln.svc-b { left: 12.5%; right: 12.5%; top: 76.9%; height: 2px; }
+  .ln.center { left: calc(50% - 1px); top: 23.1%; height: 53.8%; width: 2px; }
+  .ln.mark-t { left: calc(50% - 1px); top: 0; height: 2.5%; width: 2px; }
+  .ln.mark-b { left: calc(50% - 1px); bottom: 0; height: 2.5%; width: 2px; }
+  .net { position: absolute; left: 0; right: 0; top: calc(50% - 2px); height: 4px; border-radius: 2px;
+    background: #fff; box-shadow: 0 2px 4px rgba(0, 30, 60, .3); }
+
+  .player { position: absolute; z-index: 3; transform: translate(-50%, -50%); color: var(--ink);
+    background: rgba(255,255,255,.82); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.9);
+    font-weight: 800; font-size: clamp(10px, calc(var(--court-h) * .036), 17px); padding: .4em .6em; border-radius: .7em; white-space: nowrap;
+    max-width: 46%; overflow: hidden; text-overflow: ellipsis;
+    box-shadow: inset 0 -3px 0 var(--c), 0 4px 12px rgba(0,0,0,.22); }
+  .player.a { --c: var(--team-a); }
+  .player.b { --c: var(--team-b); }
+  .player.again::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); }
+  .p-a1 { left: 31%; top: 36.5%; } .p-a2 { left: 69%; top: 36.5%; }
+  .p-b1 { left: 31%; top: 63.5%; } .p-b2 { left: 69%; top: 63.5%; }
+  /* Narrow courts: stack each pair vertically so names can use the full court width */
+  .stack.narrow .player { max-width: 94%; font-size: 11px; }
+  .stack.narrow .p-a1 { left: 50%; top: 16%; } .stack.narrow .p-a2 { left: 50%; top: 36%; }
+  .stack.narrow .p-b1 { left: 50%; top: 64%; } .stack.narrow .p-b2 { left: 50%; top: 84%; }
+  .empty { position: absolute; left: 0; right: 0; bottom: 0; height: calc(100% - var(--strip) * 3); z-index: 1000;
+    display: grid; place-items: center; text-align: center; color: var(--muted);
+    border-radius: var(--radius); font-size: 15px; font-weight: 700; cursor: pointer; }
+  .empty span { display: block; font-size: 40px; margin-bottom: 6px; }
+
+  /* Bottom bar */
+  .bar { display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .icon-btn { width: 50px; height: 50px; flex: none; border-radius: 50%; font-size: 21px; cursor: pointer; color: var(--ink); }
+  .icon-btn:disabled { opacity: .35; cursor: default; }
+  /* Exclusive priority: one capsule, one selected segment */
+  .priority { display: flex; gap: 2px; padding: 4px; border-radius: 999px; }
+  .priority button { border: 1px solid transparent; background: transparent; color: var(--muted); border-radius: 999px; padding: 10px 13px;
+    font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: .2s; }
+  .priority button[aria-checked="true"] { color: #0b4d2a;
+    background: linear-gradient(150deg, rgba(120, 230, 150, .6), rgba(40, 170, 90, .32)); border-color: rgba(200, 255, 215, .85);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.8), 0 2px 6px rgba(0, 60, 30, .15); }
+  .priority button:active { scale: .96; }
+  button.glass:active { scale: .96; }
+
+  /* Members sheet */
+  .sheet-bg { position: fixed; inset: 0; background: rgba(10, 30, 25, .25); opacity: 0; pointer-events: none; transition: .25s; z-index: 2000; }
+  .sheet-bg.open { opacity: 1; pointer-events: auto; }
+  .sheet { position: fixed; left: 50%; bottom: 10px; width: calc(100% - 20px); max-width: 420px; transform: translate(-50%, 115%);
+    border-radius: 30px; padding: 10px 18px calc(20px + env(safe-area-inset-bottom));
+    transition: transform .35s cubic-bezier(.2,.8,.2,1); z-index: 2001; max-height: 80dvh; overflow: auto;
+    background: linear-gradient(150deg, rgba(255,255,255,.75), rgba(255,255,255,.5)); }
+  .sheet.open { transform: translate(-50%, 0); }
+  .grabber { width: 40px; height: 5px; background: rgba(0,0,0,.18); border-radius: 99px; margin: 0 auto 16px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 8px 8px 8px 14px; border-radius: 999px; font-weight: 800; font-size: 15px; cursor: pointer;
+    color: #0b4d2a; background: rgba(80, 200, 120, .3); border: 1px solid rgba(255,255,255,.8);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,.9); }
+  .chip.off { color: var(--muted); background: rgba(255,255,255,.35); }
+  .chip .x { width: 22px; height: 22px; border-radius: 50%; border: none; background: rgba(0,0,0,.07); cursor: pointer; font-size: 11px; color: inherit; }
+  .sheet-foot { display: flex; gap: 8px; }
+  .sheet-foot input { flex: 1; min-width: 0; border: 1px solid rgba(255,255,255,.8); background: rgba(255,255,255,.5);
+    border-radius: 14px; padding: 12px; font-size: 16px; color: var(--ink); outline: none; }
+  .seg { display: flex; background: rgba(0,0,0,.06); border-radius: 14px; padding: 3px; gap: 3px; }
+  .seg button { border: none; background: transparent; padding: 0 12px; border-radius: 11px; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--muted); }
+  .seg button.on { background: rgba(255,255,255,.85); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+</style>
+</head>
+<body>
+<div class="backdrop" aria-hidden="true">
+  <div class="blob ball"></div><div class="blob hard"></div><div class="blob grass"></div><div class="blob clay"></div>
+</div>
+<div class="app">
+  <header>
+    <button class="members-btn glass" id="openMembers" aria-label="メンバー">👥 <span id="memberCount"></span></button>
+  </header>
+
+  <div class="stack" id="stack"></div>
+
+  <div class="bar">
+    <div class="priority glass" id="priority" role="radiogroup" aria-label="優先">
+      <button role="radio" data-p="rest" aria-checked="true">🪑 休み連続なし</button>
+      <button role="radio" data-p="variety" aria-checked="false">🤝 ペアかぶりなし</button>
+    </div>
+    <button class="icon-btn glass" id="reshuffleBtn" aria-label="組み直す">⟳</button>
+  </div>
+</div>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet glass" id="sheet">
+  <div class="grabber"></div>
+  <div class="chips" id="chips"></div>
+  <form class="sheet-foot" id="addForm">
+    <input id="addInput" placeholder="＋ 名前" maxlength="10" autocomplete="off" enterkeyhint="done" />
+    <div class="seg" id="courtSeg">
+      <button type="button" data-v="1">1</button>
+      <button type="button" data-v="2">2</button>
+      <button type="button" data-v="3">3</button>
+      <button type="button" data-v="4">4面</button>
+    </div>
+  </form>
+</div>
+
+<script>
+(() => {
+  const state = {
+    members: ["たろう", "はなこ", "けんた", "ゆうき", "さくら", "りょう", "みき"].map(name => ({ name, active: true })),
+    courts: 1,
+    priority: "rest", // "rest" | "variety"
+    rounds: [],
+    index: 0,
+  };
+
+  const $ = id => document.getElementById(id);
+  const pairKey = (a, b) => [a, b].sort().join("|");
+  const PAST_VISIBLE = 3;
+
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function tally(history) {
+    const rest = {}, pair = {}, opp = {};
+    for (const r of history) {
+      r.rest.forEach(p => rest[p] = (rest[p] || 0) + 1);
+      for (const m of r.matches) {
+        [m.a, m.b].forEach(t => { const k = pairKey(...t); pair[k] = (pair[k] || 0) + 1; });
+        for (const x of m.a) for (const y of m.b) { const k = pairKey(x, y); opp[k] = (opp[k] || 0) + 1; }
+      }
+    }
+    return { rest, pair, opp };
+  }
+
+  function generateRound(players, history) {
+    const courts = Math.min(state.courts, Math.floor(players.length / 4));
+    if (courts === 0) return null;
+    const restN = players.length - courts * 4;
+    const t = tally(history);
+    const last = history[history.length - 1];
+    const lastRest = new Set(last ? last.rest : []);
+    const lastPairs = new Set(last ? last.matches.flatMap(m => [pairKey(...m.a), pairKey(...m.b)]) : []);
+    let best = null, bestScore = Infinity;
+    for (let i = 0; i < 600; i++) {
+      const s = shuffle(players);
+      const rest = s.slice(0, restN);
+      const play = s.slice(restN);
+      const matches = [];
+      for (let c = 0; c < courts; c++) {
+        const g = play.slice(c * 4, c * 4 + 4);
+        matches.push({ a: [g[0], g[1]], b: [g[2], g[3]] });
+      }
+      // Both rules always count; the chosen one is compared first (lexicographic), the other breaks ties.
+      let consecutiveRest = 0, restFairness = 0, pairRepeat = 0, oppRepeat = 0;
+      for (const p of rest) {
+        restFairness += t.rest[p] || 0;
+        if (lastRest.has(p)) consecutiveRest++;
+      }
+      for (const m of matches) {
+        for (const team of [m.a, m.b]) {
+          const k = pairKey(...team);
+          const n = t.pair[k] || 0;
+          pairRepeat += n * n + (lastPairs.has(k) ? 5 : 0);
+        }
+        for (const x of m.a) for (const y of m.b) oppRepeat += t.opp[pairKey(x, y)] || 0;
+      }
+      const [primary, secondary] = state.priority === "rest"
+        ? [consecutiveRest, pairRepeat * 10 + oppRepeat]
+        : [pairRepeat, consecutiveRest * 10 + oppRepeat];
+      let score = primary * 1e6 + secondary * 100 + restFairness * 30;
+      score += Math.random();
+      if (score < bestScore) { bestScore = score; best = { matches, rest }; }
+    }
+    return best;
+  }
+
+  const activePlayers = () => state.members.filter(m => m.active).map(m => m.name);
+
+  function ensureCurrent() {
+    if (state.rounds.length > state.index) return;
+    const r = generateRound(activePlayers(), state.rounds);
+    if (r) state.rounds.push(r);
+  }
+
+  function regenerateFromCurrent() {
+    state.rounds = state.rounds.slice(0, state.index);
+    ensureCurrent();
+    render();
+  }
+
+  // ---------- Rendering ----------
+  function courtHTML(m, t) {
+    const player = (p, mate, cls, team) => {
+      const again = (t.pair[pairKey(p, mate)] || 0) > 0;
+      return `<div class="player ${team} ${cls} ${again ? "again" : ""}">${p}</div>`;
+    };
+    return `
+      <div class="court">
+        <div class="court-in">
+          <div class="ln single-l"></div><div class="ln single-r"></div>
+          <div class="ln svc-t"></div><div class="ln svc-b"></div>
+          <div class="ln center"></div><div class="ln mark-t"></div><div class="ln mark-b"></div>
+          <div class="net"></div>
+          ${player(m.a[0], m.a[1], "p-a1", "a")}${player(m.a[1], m.a[0], "p-a2", "a")}
+          ${player(m.b[0], m.b[1], "p-b1", "b")}${player(m.b[1], m.b[0], "p-b2", "b")}
+        </div>
+      </div>`;
+  }
+
+  function cardHTML(r, i) {
+    const history = state.rounds.slice(0, i);
+    const t = tally(history);
+    const prev = history[history.length - 1];
+    const prevRest = new Set(prev ? prev.rest : []);
+    const rest = r.rest.length
+      ? `<div class="rest">🪑${r.rest.map(p => `<span class="${prevRest.has(p) ? "warn" : ""}">${p}</span>`).join("")}</div>`
+      : "";
+    return `
+      <div class="strip"><div class="no">${i + 1}<small>試合目</small></div>${rest}</div>
+      <div class="courts">${r.matches.map(m => courtHTML(m, t)).join("")}</div>`;
+  }
+
+  // Slot 0 is the topmost strip; the current card always sits in the bottom slot.
+  const slotY = depth => `calc(var(--strip) * ${PAST_VISIBLE - depth})`;
+  const cards = new Map(); // round index -> element
+
+  const belowY = `calc(${slotY(0)} + 110%)`;
+
+  // Older cards recede: smaller and fainter. (A CSS filter here would break the card's backdrop-filter glass.)
+  function setPose(el, depth) {
+    el.style.transform = `translateY(${slotY(depth)}) scale(${1 - depth * 0.07})`;
+    el.style.opacity = Math.max(0, 1 - depth * 0.2);
+  }
+
+  function removeCard(i, el, downward) {
+    cards.delete(i);
+    el.classList.remove("dragging", "top");
+    if (downward) el.style.transform = `translateY(${belowY})`;
+    else setPose(el, PAST_VISIBLE + 1);
+    el.style.opacity = 0;
+    setTimeout(() => el.remove(), 420);
+  }
+
+  // 3–4 courts wrap into 2 columns on narrow screens so names stay readable.
+  function layoutCourts() {
+    const top = cards.get(state.index);
+    const n = top ? top._round.matches.length : 1;
+    const cols = n >= 3 && window.innerWidth < 900 ? 2 : n;
+    document.body.dataset.cols = cols;
+    $("stack").style.setProperty("--cols", cols);
+    $("stack").style.setProperty("--rows", Math.ceil(n / cols));
+    const court = top && top.querySelector(".court");
+    $("stack").classList.toggle("narrow", !!court && court.getBoundingClientRect().width < 160);
+  }
+  window.addEventListener("resize", layoutCourts);
+
+  function render({ enter = false } = {}) {
+    const stack = $("stack");
+    const from = Math.max(0, state.index - PAST_VISIBLE);
+    const to = Math.min(state.index, state.rounds.length - 1);
+    for (const [i, el] of cards) if (i < from || i > to) removeCard(i, el, i >= state.index);
+
+    for (let i = from; i <= to; i++) {
+      const depth = state.index - i;
+      let el = cards.get(i);
+      const isNew = !el;
+      if (isNew) {
+        el = document.createElement("div");
+        el.className = "card glass";
+        attachPointerSwipe(el, i);
+        stack.appendChild(el);
+        cards.set(i, el);
+      }
+      if (el._round !== state.rounds[i]) {
+        const replaced = !!el._round;
+        el._round = state.rounds[i];
+        el.innerHTML = cardHTML(state.rounds[i], i);
+        if (replaced) { el.classList.remove("swap"); void el.offsetWidth; el.classList.add("swap"); }
+      }
+      el.classList.toggle("top", depth === 0);
+      el.style.zIndex = 100 + i;
+      if (isNew) {
+        const fromBelow = enter && depth === 0;
+        el.classList.add("dragging");
+        if (fromBelow) el.style.transform = `translateY(${belowY})`;
+        else { setPose(el, depth + 1); el.style.opacity = 0; }
+        void el.offsetWidth;
+      }
+      el.classList.remove("dragging");
+      setPose(el, depth);
+    }
+
+    const top = cards.get(state.index);
+
+    const empty = $("emptyState");
+    if (!top && !empty) {
+      stack.insertAdjacentHTML("beforeend", `<div class="empty glass" id="emptyState"><div><span>👥</span>4人以上</div></div>`);
+      $("emptyState").onclick = openSheet;
+    } else if (top && empty) empty.remove();
+
+    layoutCourts();
+
+    $("memberCount").textContent = activePlayers().length;
+    $("reshuffleBtn").disabled = !top;
+  }
+
+  // ---------- Swipe (touch / mouse / trackpad) ----------
+  const THRESHOLD = 80;
+  let animating = false;
+  const topCard = () => cards.get(state.index);
+
+  // Upward drag is damped so the card visibly "pushes" into the strips without covering them.
+  const drag = (el, dy) =>
+    el.style.transform = `translateY(calc(${slotY(0)} + ${dy < 0 ? dy * 0.6 : dy}px))`;
+  function settle(el) {
+    el.classList.remove("dragging");
+    el.style.transform = `translateY(${slotY(0)})`;
+  }
+
+  function attachPointerSwipe(el, i) {
+    let startY = 0, dy = 0, active = false;
+    el.addEventListener("pointerdown", e => {
+      if (animating || e.button !== 0) return;
+      if (!el.classList.contains("top")) { jumpTo(i); return; }
+      active = true; startY = e.clientY; dy = 0;
+      el.classList.add("dragging");
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener("pointermove", e => {
+      if (!active) return;
+      dy = e.clientY - startY;
+      drag(el, dy);
+    });
+    const end = () => {
+      if (!active) return;
+      active = false;
+      if (Math.abs(dy) <= THRESHOLD || !commit(dy < 0 ? "next" : "back")) settle(el);
+    };
+    el.addEventListener("pointerup", end);
+    el.addEventListener("pointercancel", end);
+  }
+
+  // Trackpad two-finger swipe / mouse wheel arrive as wheel events (deltaY > 0 = swipe up with natural scrolling).
+  let wheelDy = 0, wheelIdle = null, wheelLocked = false, wheelLockTimer = null;
+  $("stack").addEventListener("wheel", e => {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+    e.preventDefault();
+    // Inertial scrolling keeps firing after a commit; ignore until the gesture fully stops.
+    if (wheelLocked) {
+      clearTimeout(wheelLockTimer);
+      wheelLockTimer = setTimeout(() => wheelLocked = false, 250);
+      return;
+    }
+    const el = topCard();
+    if (!el || animating) return;
+    el.classList.add("dragging");
+    wheelDy -= e.deltaY;
+    drag(el, wheelDy);
+    clearTimeout(wheelIdle);
+    if (Math.abs(wheelDy) > THRESHOLD) {
+      const dir = wheelDy < 0 ? "next" : "back";
+      wheelDy = 0; wheelLocked = true;
+      wheelLockTimer = setTimeout(() => wheelLocked = false, 250);
+      if (!commit(dir)) settle(el);
+      return;
+    }
+    wheelIdle = setTimeout(() => { wheelDy = 0; settle(el); }, 140);
+  }, { passive: false });
+
+  function lockAnimation() {
+    animating = true;
+    setTimeout(() => animating = false, 400);
+  }
+
+  // "next": current card moves up into the strip stack and the next one rises from below.
+  // "back": current card drops out downward, and the previous one comes down into the front slot.
+  function commit(dir) {
+    if (animating) return false;
+    if (dir === "back" && state.index === 0) return false;
+    if (dir === "next" && !state.rounds[state.index]) return false;
+    lockAnimation();
+    if (dir === "next") { state.index++; ensureCurrent(); render({ enter: true }); }
+    else { state.index--; render(); }
+    return true;
+  }
+
+  function jumpTo(i) {
+    if (animating || i >= state.index) return;
+    lockAnimation();
+    state.index = i;
+    render();
+  }
+
+  // ---------- Controls ----------
+  $("priority").addEventListener("click", e => {
+    const b = e.target.closest("button[data-p]");
+    if (!b || b.dataset.p === state.priority) return;
+    state.priority = b.dataset.p;
+    document.querySelectorAll("#priority button").forEach(x => x.setAttribute("aria-checked", x === b));
+    regenerateFromCurrent();
+  });
+  $("reshuffleBtn").onclick = regenerateFromCurrent;
+  document.addEventListener("keydown", e => {
+    if ($("sheet").classList.contains("open")) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); commit("next"); }
+    if (e.key === "ArrowUp") { e.preventDefault(); commit("back"); }
+  });
+
+  // ---------- Members sheet ----------
+  let membersDirty = false;
+  function renderChips() {
+    $("chips").innerHTML = state.members.map((m, i) => `
+      <span class="chip ${m.active ? "" : "off"}" data-i="${i}">${m.name}<button type="button" class="x" data-del="${i}" aria-label="削除">✕</button></span>`).join("");
+    document.querySelectorAll("#courtSeg button").forEach(b => b.classList.toggle("on", +b.dataset.v === state.courts));
+  }
+  function openSheet() { membersDirty = false; renderChips(); $("sheet").classList.add("open"); $("sheetBg").classList.add("open"); }
+  function closeSheet() {
+    $("sheet").classList.remove("open"); $("sheetBg").classList.remove("open");
+    if (membersDirty) regenerateFromCurrent();
+  }
+
+  $("chips").addEventListener("click", e => {
+    const del = e.target.closest("[data-del]");
+    if (del) { state.members.splice(+del.dataset.del, 1); membersDirty = true; renderChips(); return; }
+    const chip = e.target.closest(".chip");
+    if (chip) { const m = state.members[+chip.dataset.i]; m.active = !m.active; membersDirty = true; renderChips(); }
+  });
+  $("addForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const name = $("addInput").value.trim();
+    if (!name || state.members.some(m => m.name === name)) return;
+    state.members.push({ name, active: true });
+    $("addInput").value = ""; membersDirty = true; renderChips();
+  });
+  $("courtSeg").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.courts = +b.dataset.v; membersDirty = true; renderChips();
+  });
+  $("openMembers").onclick = openSheet;
+  $("sheetBg").onclick = closeSheet;
+
+  ensureCurrent();
+  render();
+})();
+</script>
+</body>
+</html>
