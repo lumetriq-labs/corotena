@@ -2,7 +2,9 @@ import "./styles.css";
 import { generateRound } from "./core/scheduler";
 import type { Priority } from "./core/types";
 import { watchForUpdates } from "./freshness";
-import { activeIds, addMember, hasSwiped, load, markSwiped, removeMember, resetAll, resetRounds, roster, save } from "./store";
+import {
+  activeIds, addMember, credits, hasSwiped, load, markSwiped, removeMember, resetAll, resetRounds, roster, save, toggleMember,
+} from "./store";
 import { byId } from "./ui/dom";
 import { createMembersSheet } from "./ui/members";
 import { createStack, type Direction } from "./ui/stack";
@@ -11,7 +13,9 @@ const state = load();
 
 function ensureCurrent() {
   if (state.rounds.length > state.index) return;
-  const r = generateRound(activeIds(state), state.rounds, { courts: state.courts, priority: state.priority });
+  const r = generateRound(activeIds(state), state.rounds, {
+    courts: state.courts, priority: state.priority, credit: credits(state),
+  });
   if (r) state.rounds.push(r);
 }
 
@@ -53,10 +57,7 @@ const stack = createStack(byId("stack"), {
 
 const sheet = createMembersSheet({
   view: () => ({ members: roster(state), courts: state.courts, hasRounds: state.rounds.length > 0 }),
-  toggle(id) {
-    const m = state.members.find(x => x.id === id);
-    if (m) m.active = !m.active;
-  },
+  toggle: id => toggleMember(state, id),
   remove: id => removeMember(state, id),
   add: name => addMember(state, name),
   setCourts(n) { state.courts = n; },

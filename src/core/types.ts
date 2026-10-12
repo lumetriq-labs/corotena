@@ -6,6 +6,8 @@ export interface Member {
   active: boolean;
   /** Removed from the roster but still referenced by past rounds. */
   archived?: boolean;
+  /** Games credited on joining (or returning) mid-session, so they start level with the least-played member. */
+  credit?: number;
 }
 
 export type Team = [MemberId, MemberId];

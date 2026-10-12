@@ -90,6 +90,25 @@ describe("generateRound", () => {
     expect(performance.now() - start).toBeLessThan(2000);
   });
 
+  it("lets a credited late joiner play at the normal pace", () => {
+    const players = ids(6);
+    const random = mulberry32(1);
+    const history: Round[] = [];
+    for (let i = 0; i < 6; i++) history.push(generateRound(players, history, { courts: 1, priority: "rest", random })!);
+    const least = Math.min(...players.map(p => tally(history).play.get(p) ?? 0));
+    const joined = [...players, "late"];
+    const credit = new Map([["late", least]]);
+    const after: Round[] = [];
+    for (let i = 0; i < 7; i++) {
+      after.push(generateRound(joined, [...history, ...after], { courts: 1, priority: "rest", random, credit })!);
+    }
+    const latePlays = after.filter(r => !r.rest.includes("late")).length;
+    const play = tally(after).play;
+    const othersAvg = players.reduce((s, p) => s + (play.get(p) ?? 0), 0) / players.length;
+    expect(latePlays).toBeLessThan(after.length);
+    expect(Math.abs(latePlays - othersAvg)).toBeLessThanOrEqual(1);
+  });
+
   it("is deterministic for a given seed", () => {
     expect(run(9, 2, "variety", 5, 42)).toEqual(run(9, 2, "variety", 5, 42));
   });

@@ -1,3 +1,4 @@
+import { tally } from "./core/scheduler";
 import { MAX_COURTS, type Member, type MemberId, type Priority, type Round, type Team } from "./core/types";
 
 export interface State {
@@ -19,7 +20,12 @@ const isStr = (v: unknown): v is string => typeof v === "string";
 
 function parseMember(v: unknown): Member | null {
   if (!isObj(v) || !isStr(v.id) || !isStr(v.name) || typeof v.active !== "boolean") return null;
-  return { id: v.id, name: v.name, active: v.active, ...(v.archived === true ? { archived: true } : {}) };
+  const credit = typeof v.credit === "number" && Number.isFinite(v.credit) && v.credit > 0 ? Math.floor(v.credit) : 0;
+  return {
+    id: v.id, name: v.name, active: v.active,
+    ...(v.archived === true ? { archived: true } : {}),
+    ...(credit ? { credit } : {}),
+  };
 }
 
 function parseTeam(v: unknown, ids: Set<MemberId>): Team | null {
@@ -97,21 +103,51 @@ export function newId(): MemberId {
 export const roster = (s: State) => s.members.filter(m => !m.archived);
 export const activeIds = (s: State) => roster(s).filter(m => m.active).map(m => m.id);
 
+export const credits = (s: State): Map<MemberId, number> =>
+  new Map(s.members.filter(m => m.credit).map(m => [m.id, m.credit!]));
+
 const appearsIn = (id: MemberId, rounds: Round[]) =>
   rounds.some(r => r.rest.includes(id) || r.matches.some(m => m.a.includes(id) || m.b.includes(id)));
+
+/** Rounds already played. The newest round stays open until the next one is dealt, so it gets regenerated. */
+const finishedRounds = (s: State) => s.rounds.slice(0, Math.max(s.index, s.rounds.length - 1));
+
+/**
+ * Starts a joining or returning member level with the least-played active member, so they
+ * play at the normal pace instead of catching up on rounds they weren't there for.
+ * Never lowers a count they already have.
+ */
+function levelUp(s: State, m: Member): void {
+  const played = tally(finishedRounds(s)).play;
+  const games = (x: Member) => (played.get(x.id) ?? 0) + (x.credit ?? 0);
+  const others = roster(s).filter(x => x.active && x.id !== m.id);
+  if (!others.length) return;
+  const target = Math.min(...others.map(games));
+  const credit = Math.max(m.credit ?? 0, target - (played.get(m.id) ?? 0));
+  if (credit > 0) m.credit = credit;
+}
 
 /** Adds a member, or restores an archived one with the same name so their history carries over. */
 export function addMember(s: State, name: string): boolean {
   const trimmed = name.trim();
   if (!trimmed || roster(s).some(m => m.name === trimmed)) return false;
-  const archived = s.members.find(m => m.archived && m.name === trimmed);
-  if (archived) {
-    delete archived.archived;
-    archived.active = true;
+  let m = s.members.find(x => x.archived && x.name === trimmed);
+  if (m) {
+    delete m.archived;
+    m.active = true;
   } else {
-    s.members.push({ id: newId(), name: trimmed, active: true });
+    m = { id: newId(), name: trimmed, active: true };
+    s.members.push(m);
   }
+  levelUp(s, m);
   return true;
+}
+
+export function toggleMember(s: State, id: MemberId): void {
+  const m = s.members.find(x => x.id === id);
+  if (!m) return;
+  m.active = !m.active;
+  if (m.active) levelUp(s, m);
 }
 
 /** Members referenced by past rounds are archived so those cards can still show their names. */
@@ -135,4 +171,5 @@ export function resetRounds(s: State): void {
   s.rounds = [];
   s.index = 0;
   s.members = s.members.filter(m => !m.archived);
+  for (const m of s.members) delete m.credit;
 }

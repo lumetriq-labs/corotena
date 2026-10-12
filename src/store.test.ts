@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { activeIds, addMember, initialState, load, parseState, removeMember, resetAll, resetRounds, save } from "./store";
+import {
+  activeIds, addMember, initialState, load, parseState, removeMember, resetAll, resetRounds, save, toggleMember,
+} from "./store";
 
 describe("parseState", () => {
   it("rejects malformed data", () => {
@@ -82,6 +84,39 @@ describe("members", () => {
     const f = s.members.find(m => m.name === "F")!.id;
     removeMember(s, f);
     expect(s.members.some(m => m.id === f)).toBe(false);
+  });
+
+  it("starts late joiners and returners level with the least-played member", () => {
+    const s = initialState();
+    for (const n of ["A", "B", "C", "D", "E"]) addMember(s, n);
+    const [a, b, c, d, e] = s.members.map(m => m.id) as [string, string, string, string, string];
+    // Two finished rounds plus the round in play (index 2), which is excluded from the count.
+    s.rounds = [
+      { matches: [{ a: [a, b], b: [c, d] }], rest: [e] },
+      { matches: [{ a: [a, e], b: [c, b] }], rest: [d] },
+      { matches: [{ a: [a, d], b: [e, b] }], rest: [c] },
+    ];
+    s.index = 2;
+
+    addMember(s, "F");
+    expect(s.members.find(m => m.name === "F")?.credit).toBe(1);
+
+    toggleMember(s, a);
+    toggleMember(s, a);
+    expect(s.members.find(m => m.id === a)?.credit).toBeUndefined();
+
+    removeMember(s, s.members.find(m => m.name === "F")!.id);
+    toggleMember(s, e);
+    s.rounds.push({ matches: [{ a: [a, b], b: [c, d] }], rest: [] });
+    s.rounds.push({ matches: [{ a: [a, b], b: [c, d] }], rest: [] });
+    s.index = 4;
+    // Finished rounds 1–4: a 4, b 4, c 3, d 3, e 2 → e returns level with c and d.
+    toggleMember(s, e);
+    expect(s.members.find(m => m.id === e)?.credit).toBe(1);
+
+    expect(parseState(JSON.parse(JSON.stringify(s)))?.members.find(m => m.id === e)?.credit).toBe(1);
+    resetRounds(s);
+    expect(s.members.some(m => m.credit)).toBe(false);
   });
 
   it("drops archived members on reset", () => {
