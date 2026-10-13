@@ -9,7 +9,6 @@ export interface MembersView {
 
 export interface MembersHandlers {
   view: () => MembersView;
-  toggle: (id: MemberId) => void;
   remove: (id: MemberId) => void;
   add: (name: string) => boolean;
   setCourts: (n: number) => void;
@@ -34,11 +33,7 @@ export function createMembersSheet(handlers: MembersHandlers) {
       x.type = "button";
       x.dataset.del = m.id;
       x.setAttribute("aria-label", `${m.name}を削除`);
-      const chip = h("span", `chip${m.active ? "" : " off"}`, m.name, x);
-      chip.dataset.id = m.id;
-      chip.setAttribute("role", "checkbox");
-      chip.setAttribute("aria-checked", String(m.active));
-      return chip;
+      return h("span", "chip", m.name, x);
     }));
     for (const b of byId("courtSeg").querySelectorAll<HTMLButtonElement>("button")) {
       b.classList.toggle("on", Number(b.dataset.v) === v.courts);
@@ -70,9 +65,7 @@ export function createMembersSheet(handlers: MembersHandlers) {
   chips.addEventListener("click", e => {
     const target = e.target as HTMLElement;
     const del = target.closest<HTMLElement>("[data-del]");
-    if (del) { mutate(() => handlers.remove(del.dataset.del!)); return; }
-    const chip = target.closest<HTMLElement>(".chip");
-    if (chip) mutate(() => handlers.toggle(chip.dataset.id!));
+    if (del) mutate(() => handlers.remove(del.dataset.del!));
   });
 
   byId("addForm").addEventListener("submit", e => {

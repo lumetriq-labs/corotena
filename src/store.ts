@@ -162,6 +162,11 @@ export function removeMember(s: State, id: MemberId): void {
   }
 }
 
+/** Resting can't be toggled from the UI right now, so members saved as resting would otherwise be stuck. */
+export function removeInactive(s: State): void {
+  for (const m of roster(s)) if (!m.active) removeMember(s, m.id);
+}
+
 /** Back to a fresh start (no members, no rounds, default settings). */
 export function resetAll(s: State): void {
   Object.assign(s, initialState());

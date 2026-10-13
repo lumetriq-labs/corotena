@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  activeIds, addMember, initialState, load, parseState, removeMember, resetAll, resetRounds, save, toggleMember,
+  activeIds, addMember, initialState, load, parseState, removeInactive, removeMember, resetAll, resetRounds, save, toggleMember,
 } from "./store";
 
 describe("parseState", () => {
@@ -117,6 +117,31 @@ describe("members", () => {
     expect(parseState(JSON.parse(JSON.stringify(s)))?.members.find(m => m.id === e)?.credit).toBe(1);
     resetRounds(s);
     expect(s.members.some(m => m.credit)).toBe(false);
+  });
+
+  it("removes members saved as resting, keeping the history of those who played", () => {
+    const s = initialState();
+    for (const n of ["A", "B", "C", "D", "E", "F"]) addMember(s, n);
+    const [a, b, c, d, e, f] = s.members.map(m => m.id) as [string, string, string, string, string, string];
+    s.rounds = [{ matches: [{ a: [a, b], b: [c, d] }], rest: [e] }];
+    s.members.find(m => m.id === e)!.active = false;
+    s.members.find(m => m.id === f)!.active = false;
+    removeInactive(s);
+    expect(s.members.find(m => m.id === e)?.archived).toBe(true);
+    expect(s.members.some(m => m.id === f)).toBe(false);
+    expect(activeIds(s)).toEqual([a, b, c, d]);
+  });
+
+  it("brings a deleted member back with their history when re-added by name", () => {
+    const s = initialState();
+    for (const n of ["A", "B", "C", "D", "E"]) addMember(s, n);
+    const [a, b, c, d, e] = s.members.map(m => m.id) as [string, string, string, string, string];
+    s.rounds = [{ matches: [{ a: [a, b], b: [c, d] }], rest: [e] }];
+    removeMember(s, e);
+    s.rounds.push({ matches: [{ a: [a, c], b: [b, d] }], rest: [] });
+    s.index = 2;
+    addMember(s, "E");
+    expect(s.members.find(m => m.id === e)).toMatchObject({ active: true, credit: 2 });
   });
 
   it("drops archived members on reset", () => {

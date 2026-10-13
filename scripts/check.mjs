@@ -219,6 +219,12 @@ await run(browser, "reset", { width: 390, height: 844 }, async page => {
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/reset-01-sheet.png` });
 
+  await page.locator(".chip").first().click({ position: { x: 12, y: 12 } });
+  await page.waitForTimeout(200);
+  const afterTap = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")));
+  expect("[reset] tapping a name doesn't rest them", (await page.locator(".chip").count()) === 5
+    && afterTap.members.every(m => m.active));
+
   page.once("dialog", d => d.dismiss());
   await page.click("#clearBtn");
   await page.waitForTimeout(300);
