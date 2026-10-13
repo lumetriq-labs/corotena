@@ -219,6 +219,10 @@ await run(browser, "reset", { width: 390, height: 844 }, async page => {
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/reset-01-sheet.png` });
 
+  const games = await page.locator(".chip .games").allTextContents();
+  expect("[reset] game counts cover the two rounds so far", games.length === 5
+    && games.reduce((sum, n) => sum + Number(n), 0) === 8 && games.every(n => Number(n) >= 1));
+
   await page.locator(".chip").first().click({ position: { x: 12, y: 12 } });
   await page.waitForTimeout(200);
   const afterTap = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")));

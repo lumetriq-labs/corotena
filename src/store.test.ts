@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  activeIds, addMember, initialState, load, parseState, removeInactive, removeMember, resetAll, resetRounds, save, toggleMember,
+  activeIds, addMember, gamesPlayed, initialState, load, parseState, removeInactive, removeMember, resetAll, resetRounds, save, toggleMember,
 } from "./store";
 
 describe("parseState", () => {
@@ -142,6 +142,21 @@ describe("members", () => {
     s.index = 2;
     addMember(s, "E");
     expect(s.members.find(m => m.id === e)).toMatchObject({ active: true, credit: 2 });
+  });
+
+  it("counts games up to the round on screen, without credit", () => {
+    const s = initialState();
+    for (const n of ["A", "B", "C", "D", "E"]) addMember(s, n);
+    const [a, b, c, d, e] = s.members.map(m => m.id) as [string, string, string, string, string];
+    s.rounds = [
+      { matches: [{ a: [a, b], b: [c, d] }], rest: [e] },
+      { matches: [{ a: [a, e], b: [c, b] }], rest: [d] },
+      { matches: [{ a: [a, d], b: [e, b] }], rest: [c] },
+    ];
+    s.index = 1;
+    s.members.find(m => m.id === e)!.credit = 5;
+    const g = gamesPlayed(s);
+    expect([a, b, c, d, e].map(id => g.get(id) ?? 0)).toEqual([2, 2, 2, 1, 1]);
   });
 
   it("drops archived members on reset", () => {

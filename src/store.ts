@@ -112,6 +112,9 @@ const appearsIn = (id: MemberId, rounds: Round[]) =>
 /** Rounds already played. The newest round stays open until the next one is dealt, so it gets regenerated. */
 const finishedRounds = (s: State) => s.rounds.slice(0, Math.max(s.index, s.rounds.length - 1));
 
+/** Games each member has been on court for, up to and including the round on screen. Credit isn't included. */
+export const gamesPlayed = (s: State): Map<MemberId, number> => tally(s.rounds.slice(0, s.index + 1)).play;
+
 /**
  * Starts a joining or returning member level with the least-played active member, so they
  * play at the normal pace instead of catching up on rounds they weren't there for.

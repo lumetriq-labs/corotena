@@ -3,6 +3,7 @@ import { byId, h } from "./dom";
 
 export interface MembersView {
   members: readonly Member[];
+  games: ReadonlyMap<MemberId, number>;
   courts: number;
   hasRounds: boolean;
 }
@@ -33,7 +34,9 @@ export function createMembersSheet(handlers: MembersHandlers) {
       x.type = "button";
       x.dataset.del = m.id;
       x.setAttribute("aria-label", `${m.name}を削除`);
-      return h("span", "chip", m.name, x);
+      const games = h("span", "games", String(v.games.get(m.id) ?? 0));
+      games.setAttribute("aria-label", `${v.games.get(m.id) ?? 0}試合`);
+      return h("span", "chip", m.name, games, x);
     }));
     for (const b of byId("courtSeg").querySelectorAll<HTMLButtonElement>("button")) {
       b.classList.toggle("on", Number(b.dataset.v) === v.courts);
