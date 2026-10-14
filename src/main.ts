@@ -2,6 +2,7 @@ import "./styles.css";
 import { generateRound } from "./core/scheduler";
 import type { Priority } from "./core/types";
 import { watchForUpdates } from "./freshness";
+import { enableOffline } from "./offline";
 import {
   activeIds, addMember, credits, gamesPlayed, hasSwiped, load, markSwiped, removeInactive, removeMember, resetAll, resetRounds, roster, save,
 } from "./store";
@@ -112,3 +113,4 @@ ensureCurrent();
 render();
 showHint();
 watchForUpdates();
+enableOffline();

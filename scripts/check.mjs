@@ -270,6 +270,58 @@ await run(browser, "reset", { width: 390, height: 844 }, async page => {
   await ctx.close();
 }
 
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const page = await ctx.newPage();
+  const pageErrors = [];
+  page.on("pageerror", e => pageErrors.push(e.message));
+  await page.goto(URL);
+
+  const manifest = await page.evaluate(async () => {
+    const href = document.querySelector('link[rel="manifest"]')?.href;
+    const m = href ? await (await fetch(href)).json() : null;
+    const icons = m ? await Promise.all(m.icons.map(async i => (await fetch(new URL(i.src, href))).ok)) : [];
+    return { name: m?.name, display: m?.display, icons };
+  });
+  expect("[offline] manifest and icons are served", manifest.name === "pairloom" && manifest.display === "standalone"
+    && manifest.icons.length === 3 && manifest.icons.every(Boolean), JSON.stringify(manifest));
+
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise(r => navigator.serviceWorker.addEventListener("controllerchange", r, { once: true }));
+    }
+  });
+  await setMembers(page, NAMES.slice(0, 5), 1);
+  await swipe(page, -160);
+
+  await ctx.setOffline(true);
+  const reachable = await page.evaluate(() => fetch(`./version.json?t=${Date.now()}`, { cache: "no-store" }).then(() => true, () => false));
+  expect("[offline] network is really off", !reachable);
+
+  await page.reload();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${OUT}/offline-01-reloaded.png` });
+  let title = await page.locator(".card.top .no").textContent().catch(() => null);
+  expect("[offline] app opens with the saved rounds", title === "2試合目", title);
+  await swipe(page, -160);
+  title = await page.locator(".card.top .no").textContent().catch(() => null);
+  expect("[offline] next round can still be dealt", title === "3試合目", title);
+
+  await page.click(".help-btn");
+  await page.waitForLoadState();
+  expect("[offline] about page opens", (await page.locator("h1").textContent().catch(() => null)) === "組み合わせの決め方");
+  await page.click(".back");
+  await page.waitForLoadState();
+  expect("[offline] back to the app", (await page.locator("#stack").count()) === 1);
+
+  await page.goto(`${URL}?v=some-build`);
+  await page.waitForTimeout(500);
+  expect("[offline] opens with an update query string too", (await page.locator(".card.top").count()) > 0);
+  expect("[offline] no page errors", pageErrors.length === 0, pageErrors.join(" | "));
+  await ctx.close();
+}
+
 await browser.close();
 console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed", `— screenshots in ${OUT}`);
 process.exit(failures ? 1 : 0);
