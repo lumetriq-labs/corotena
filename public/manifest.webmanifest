@@ -2,7 +2,7 @@
   "id": "./",
   "name": "pairloom",
   "short_name": "pairloom",
-  "description": "テニスのダブルスの組み合わせをスワイプで決める",
+  "description": "テニスのダブルスの組み合わせを公平に決める",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",
