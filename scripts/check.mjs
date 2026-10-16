@@ -270,6 +270,59 @@ await run(browser, "reset", { width: 390, height: 844 }, async page => {
   await ctx.close();
 }
 
+await run(browser, "install", { width: 390, height: 844 }, async page => {
+  await page.goto(new globalThis.URL("about.html", URL).href);
+  await page.waitForTimeout(500);
+  expect("[install] about page links to the guide", await page.locator("#installLink").isVisible());
+  await page.click(".install-link");
+  await page.waitForLoadState();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}/install-01-android.png`, fullPage: true });
+  expect("[install] guide opens", (await page.locator("h1").textContent()) === "ホーム画面に追加");
+  const order = await page.evaluate(() => [...document.querySelectorAll("#android, #ios")].map(s => s.id).join(","));
+  expect("[install] Android section first off iOS", order === "android,ios", order);
+  expect("[install] no button until the browser offers install", !(await page.locator("#installBtn").isVisible()));
+
+  await page.evaluate(() => {
+    const e = new Event("beforeinstallprompt", { cancelable: true });
+    e.prompt = () => { window.__prompted = true; return Promise.resolve(); };
+    e.userChoice = Promise.resolve({ outcome: "accepted" });
+    dispatchEvent(e);
+  });
+  expect("[install] button appears when install is offered", await page.locator("#installBtn").isVisible());
+  await page.screenshot({ path: `${OUT}/install-02-button.png`, fullPage: true });
+  await page.click("#installBtn");
+  expect("[install] button opens the browser's install prompt", await page.evaluate(() => window.__prompted === true));
+  expect("[install] button is single-use", !(await page.locator("#installBtn").isVisible()));
+  await page.evaluate(() => dispatchEvent(new Event("appinstalled")));
+  expect("[install] confirms once installed", await page.locator("#installed").isVisible());
+
+  await page.click(".back");
+  await page.waitForLoadState();
+  expect("[install] back returns to the about page", (await page.locator("h1").textContent()) === "組み合わせの決め方");
+});
+
+await run(browser, "install-ios", { width: 390, height: 844 }, async page => {
+  await page.goto(new globalThis.URL("install.html", URL).href);
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}/install-ios-01.png`, fullPage: true });
+  const order = await page.evaluate(() => [...document.querySelectorAll("#android, #ios")].map(s => s.id).join(","));
+  expect("[install-ios] iPhone section first on iOS", order === "ios,android", order);
+}, { userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1", isMobile: true, hasTouch: true });
+
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await ctx.addInitScript(() => Object.defineProperty(Navigator.prototype, "standalone", { get: () => true }));
+  const page = await ctx.newPage();
+  await page.goto(new globalThis.URL("about.html", URL).href);
+  await page.waitForTimeout(500);
+  expect("[standalone] about page hides the install link", !(await page.locator("#installLink").isVisible()));
+  await page.goto(new globalThis.URL("install.html", URL).href);
+  await page.waitForTimeout(500);
+  expect("[standalone] guide says it's already installed", await page.locator("#installed").isVisible());
+  await ctx.close();
+}
+
 {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
@@ -314,6 +367,9 @@ await run(browser, "reset", { width: 390, height: 844 }, async page => {
   await page.click(".back");
   await page.waitForLoadState();
   expect("[offline] back to the app", (await page.locator("#stack").count()) === 1);
+
+  await page.goto(new globalThis.URL("install.html", URL).href);
+  expect("[offline] install guide opens", (await page.locator("h1").textContent().catch(() => null)) === "ホーム画面に追加");
 
   await page.goto(`${URL}?v=some-build`);
   await page.waitForTimeout(500);

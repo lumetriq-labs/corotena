@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#5d6366" />
+  <meta name="description" content="pairloom をホーム画面に追加する方法" />
+  <title>ホーム画面に追加 — pairloom</title>
+  <link rel="icon" type="image/png" href="./icons/favicon-64-v2.png" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon-v2.png" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+</head>
+<body class="doc">
+  <div class="backdrop" aria-hidden="true">
+    <div class="blob ball"></div><div class="blob hard"></div><div class="blob grass"></div><div class="blob clay"></div>
+  </div>
+  <main class="doc-main" id="installMain">
+    <a class="back glass" href="./about.html">← 戻る</a>
+    <h1>ホーム画面に追加</h1>
+
+    <section class="glass">
+      <h2>アプリのように使えます</h2>
+      <ul class="benefits">
+        <li><b>📱</b>ホーム画面のアイコンからすぐ開ける</li>
+        <li><b>📶</b>電波がない場所でも使える</li>
+        <li><b>⛶</b>画面いっぱいに表示される</li>
+      </ul>
+    </section>
+
+    <section class="glass" id="installed" hidden>
+      <h2>追加済みです</h2>
+      <p>いまはホーム画面から開いています。</p>
+    </section>
+
+    <section class="glass" id="android">
+      <h2>Android<span class="os-tag">Chrome</span></h2>
+      <button type="button" class="install-btn" id="installBtn" hidden>📲 ホーム画面に追加する</button>
+      <p class="note">ボタンが出ないときは、Chrome 右上の <span class="menu-dot">⋮</span> から「ホーム画面に追加」または「アプリをインストール」を選んでください。</p>
+    </section>
+
+    <section class="glass" id="ios">
+      <h2>iPhone<span class="os-tag">Safari</span></h2>
+      <ol class="steps">
+        <li>画面下の共有ボタンをタップ
+          <div class="ui mock-bar" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 18l-6-6 6-6"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            <span class="hl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="11" height="11" rx="2"/><rect x="9" y="9" width="11" height="11" rx="2"/></svg>
+          </div>
+        </li>
+        <li>メニューの「ホーム画面に追加」をタップ
+          <div class="ui mock-row hl" aria-hidden="true">ホーム画面に追加
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>
+          </div>
+        </li>
+        <li>右上の「追加」をタップ
+          <div class="ui mock-head" aria-hidden="true"><span class="cancel">キャンセル</span><b>ホーム画面に追加</b><span class="add">追加</span></div>
+        </li>
+      </ol>
+      <p class="note">共有ボタンが見当たらないときは、画面下の「…」から「共有」を開いてください。</p>
+    </section>
+
+    <section class="glass">
+      <p class="note">電波がない場所で使うには、一度ネットにつながった状態で開いておく必要があります。</p>
+    </section>
+  </main>
+  <script type="module" src="/src/install.ts"></script>
+</body>
+</html>
