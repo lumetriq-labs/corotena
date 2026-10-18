@@ -121,14 +121,17 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
       }
       active = true; startY = e.clientY; dy = 0;
       el.classList.add("dragging");
-      el.setPointerCapture(e.pointerId);
+      // Touch is captured implicitly. Capturing it explicitly as well makes iOS Safari keep the capture
+      // after the swipe, so the next tap anywhere else (members, priority) is swallowed by this card.
+      if (e.pointerType !== "touch") el.setPointerCapture(e.pointerId);
     });
     el.addEventListener("pointermove", e => {
       if (!active) return;
       dy = e.clientY - startY;
       drag(el, dy);
     });
-    const end = () => {
+    const end = (e: PointerEvent) => {
+      if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
       if (!active) return;
       active = false;
       if (Math.abs(dy) <= THRESHOLD || !commit(dy < 0 ? "next" : "back")) settle(el);

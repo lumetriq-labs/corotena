@@ -257,6 +257,35 @@ await run(browser, "streak", { width: 390, height: 844 }, async page => {
   expect("[streak] a swipe starting on the rest names still advances", title === "14試合目", title);
 });
 
+await run(browser, "touch", { width: 390, height: 844 }, async page => {
+  await setMembers(page, NAMES.slice(0, 6), 1);
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x: 195, y }] });
+  const swipeUp = async () => {
+    await touch("touchStart", 600);
+    for (let i = 1; i <= 8; i++) await touch("touchMove", 600 - i * 25);
+    await touch("touchEnd", 400);
+    await page.waitForTimeout(500);
+  };
+  const tap = async selector => {
+    const b = await page.locator(selector).boundingBox();
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(450);
+  };
+
+  await swipeUp();
+  expect("[touch] a touch swipe advances", (await page.locator(".card.top .no").textContent()) === "2試合目");
+  await tap("#openMembers");
+  expect("[touch] members opens on the first tap after a swipe", (await page.locator("#sheet.open").count()) === 1);
+  await page.touchscreen.tap(5, 5);
+  await page.waitForTimeout(800);
+
+  await swipeUp();
+  await tap('#priority button[data-p="variety"]');
+  expect("[touch] priority switches on the first tap after a swipe",
+    (await page.getAttribute('#priority button[data-p="variety"]', "aria-checked")) === "true");
+}, { hasTouch: true, isMobile: true });
+
 await run(browser, "hint", { width: 390, height: 844 }, async page => {
   const hint = page.locator(".hint");
   await setMembers(page, NAMES.slice(0, 5), 1);
