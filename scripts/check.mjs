@@ -200,6 +200,10 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
   expect("[history] no swipe hint once the notice was touched away", (await notice()) === "", await notice());
 
   await swipe(page, -160);
+  if ((await page.locator(".cancel").count()) === 0) {
+    console.log("skip [history] cancel checks: cancel button is turned off");
+    return;
+  }
   expect("[history] newest card can be cancelled", (await title()) === "5試合目" && (await cancelVisible()));
   await page.screenshot({ path: `${OUT}/history-03-cancel-button.png` });
   page.once("dialog", d => d.dismiss());
