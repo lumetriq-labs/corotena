@@ -32,7 +32,7 @@ const metrics = () => {
     }).map(q => `${p.textContent}/${q.textContent}`)),
     noWraps: top ? top.querySelector(".no").getBoundingClientRect().height < 34 : true,
     injected: document.querySelectorAll(".card b, .chips b").length,
-    stored: JSON.parse(localStorage.getItem("pairloom:v1") ?? "null"),
+    stored: JSON.parse(localStorage.getItem("corotena:v1") ?? "null"),
   };
 };
 
@@ -157,7 +157,7 @@ await run(browser, "about", { width: 390, height: 844 }, async page => {
 });
 
 await run(browser, "history", { width: 390, height: 844 }, async page => {
-  const rounds = () => page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")).rounds);
+  const rounds = () => page.evaluate(() => JSON.parse(localStorage.getItem("corotena:v1")).rounds);
   const title = () => page.locator(".card.top .no").textContent();
   const notice = async () => ((await page.locator(".hint").count()) ? await page.locator(".hint").textContent() : "");
   const cancelVisible = () => page.locator(".card.top.cancellable .cancel").isVisible();
@@ -183,7 +183,7 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
   await swipe(page, -160);
   after = await rounds();
   expect("[history] joiners are in the next round", (await title()) === "4試合目" && players(after[3]) === 10);
-  const joinerIds = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")).members
+  const joinerIds = await page.evaluate(() => JSON.parse(localStorage.getItem("corotena:v1")).members
     .filter(m => m.name === "メンバー9" || m.name === "メンバー10").map(m => m.id));
   expect("[history] joiners play rather than rest", joinerIds.length === 2 && !after[3].rest.some(id => joinerIds.includes(id)),
     JSON.stringify(after[3].rest));
@@ -225,7 +225,7 @@ await run(browser, "streak", { width: 390, height: 844 }, async page => {
   await setMembers(page, [...NAMES, "メンバー9", "メンバー10"], 1);
   for (let i = 0; i < 12; i++) await swipe(page, -160);
   await page.screenshot({ path: `${OUT}/streak-01-10-on-1-court.png` });
-  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")));
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("corotena:v1")));
   const longest = Math.max(...stored.members.map(m => {
     let run = 0, best = 0;
     for (const r of stored.rounds) { run = r.rest.includes(m.id) ? run + 1 : 0; best = Math.max(best, run); }
@@ -350,7 +350,7 @@ await run(browser, "reset", { width: 390, height: 844 }, async page => {
 
   await page.locator(".chip").first().click({ position: { x: 12, y: 12 } });
   await page.waitForTimeout(200);
-  const afterTap = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")));
+  const afterTap = await page.evaluate(() => JSON.parse(localStorage.getItem("corotena:v1")));
   expect("[reset] tapping a name doesn't rest them", (await page.locator(".chip").count()) === 5
     && afterTap.members.every(m => m.active));
 
@@ -363,7 +363,7 @@ await run(browser, "reset", { width: 390, height: 844 }, async page => {
   await page.click("#clearBtn");
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/reset-02-cleared.png` });
-  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")));
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("corotena:v1")));
   expect("[reset] clears members, rounds and settings", (await page.locator(".chip").count()) === 0
     && stored.members.length === 0 && stored.rounds.length === 0 && stored.courts === 1);
   expect("[reset] sheet stays open for new members", await page.locator("#sheet.open").count() === 1);
@@ -461,7 +461,7 @@ await run(browser, "install-ios", { width: 390, height: 844 }, async page => {
     const icons = m ? await Promise.all(m.icons.map(async i => (await fetch(new URL(i.src, href))).ok)) : [];
     return { name: m?.name, display: m?.display, icons };
   });
-  expect("[offline] manifest and icons are served", manifest.name === "pairloom" && manifest.display === "standalone"
+  expect("[offline] manifest and icons are served", manifest.name === "Corotena" && manifest.display === "standalone"
     && manifest.icons.length === 3 && manifest.icons.every(Boolean), JSON.stringify(manifest));
 
   await page.evaluate(async () => {

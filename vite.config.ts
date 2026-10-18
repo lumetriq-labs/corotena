@@ -11,7 +11,7 @@ const listFiles = (dir: string): string[] =>
   });
 
 export default defineConfig({
-  // Relative asset URLs so the build works under the GitHub Pages sub-path (/pairloom/).
+  // Relative asset URLs so the build works under the GitHub Pages sub-path (/corotena/).
   base: "./",
   build: {
     rollupOptions: {

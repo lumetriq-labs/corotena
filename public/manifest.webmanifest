@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "pairloom",
-  "short_name": "pairloom",
+  "name": "Corotena",
+  "short_name": "Corotena",
   "description": "テニスのダブルスの組み合わせを公平に決める",
   "lang": "ja",
   "start_url": "./",

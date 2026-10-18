@@ -11,7 +11,7 @@ export interface State {
   index: number;
 }
 
-const KEY = "pairloom:v1";
+const KEY = "corotena:v1";
 
 export const initialState = (): State => ({ version: 1, members: [], courts: 1, priority: "rest", rounds: [], index: 0 });
 
@@ -78,7 +78,7 @@ export function save(state: State, storage: Storage = localStorage): void {
   }
 }
 
-const SWIPED_KEY = "pairloom:swiped";
+const SWIPED_KEY = "corotena:swiped";
 
 /** Whether this device has ever advanced a round, so the swipe hint is no longer needed. */
 export function hasSwiped(storage: Storage = localStorage): boolean {

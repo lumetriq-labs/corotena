@@ -1,6 +1,6 @@
 // Service worker template. The build fills in the build id and file list (see vite.config.ts),
 // so every deploy changes this file and the browser installs the new version.
-const CACHE = "pairloom-" + __BUILD_ID__;
+const CACHE = "corotena-" + __BUILD_ID__;
 const PRECACHE = __PRECACHE__;
 // On a weak signal, don't keep the user waiting for the network before showing the saved copy.
 const NETWORK_TIMEOUT_MS = 3000;
@@ -20,7 +20,7 @@ self.addEventListener("install", event => {
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
     for (const key of await caches.keys()) {
-      if (key.startsWith("pairloom-") && key !== CACHE) await caches.delete(key);
+      if (key.startsWith("corotena-") && key !== CACHE) await caches.delete(key);
     }
     await self.clients.claim();
   })());

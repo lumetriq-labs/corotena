@@ -1,10 +1,10 @@
-# pairloom
+# Corotena
 
 Swipe through fair tennis doubles pairings.
 
 Each swipe up deals the next round as a court-shaped card; past rounds stack behind it like a wallet. Swipe down (or tap a strip) to go back.
 
-**https://lumetriq-labs.github.io/pairloom/**
+**https://lumetriq-labs.github.io/corotena/**
 
 ## Rules
 
