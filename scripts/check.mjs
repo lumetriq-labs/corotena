@@ -160,7 +160,7 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
   const rounds = () => page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")).rounds);
   const title = () => page.locator(".card.top .no").textContent();
   const notice = async () => ((await page.locator(".hint").count()) ? await page.locator(".hint").textContent() : "");
-  const cancelVisible = () => page.locator(".card.top .cancel").isVisible();
+  const cancelVisible = () => page.locator(".card.top.cancellable .cancel").isVisible();
   const players = r => new Set([...r.rest, ...r.matches.flatMap(m => [...m.a, ...m.b])]).size;
 
   // Yesterday's case: 8 players up to round 3, then 2 more join.
@@ -200,10 +200,6 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
   expect("[history] no swipe hint once the notice was touched away", (await notice()) === "", await notice());
 
   await swipe(page, -160);
-  if ((await page.locator(".cancel").count()) === 0) {
-    console.log("skip [history] cancel checks: cancel button is turned off");
-    return;
-  }
   expect("[history] newest card can be cancelled", (await title()) === "5試合目" && (await cancelVisible()));
   await page.screenshot({ path: `${OUT}/history-03-cancel-button.png` });
   page.once("dialog", d => d.dismiss());
@@ -220,6 +216,14 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
 
   await swipe(page, 160);
   expect("[history] older cards can't be cancelled", (await title()) === "3試合目" && !(await cancelVisible()));
+  const dialogs = [];
+  page.on("dialog", d => { dialogs.push(d.message()); d.dismiss(); });
+  await page.click(".card.top .cancel");
+  await page.waitForTimeout(400);
+  expect("[history] tapping a greyed-out ✕ does nothing", dialogs.length === 0 && (await rounds()).length === 4
+    && (await title()) === "3試合目", dialogs.join(","));
+  const xs = await page.evaluate(() => [...document.querySelectorAll(".card .cancel")].map(b => getComputedStyle(b).display));
+  expect("[history] every card keeps its ✕ laid out", xs.length > 1 && xs.every(d => d === "grid"), xs.join(","));
   await swipe(page, -160); await swipe(page, -160);
   expect("[history] a fresh round 5 is dealt after cancelling", (await title()) === "5試合目" && (await rounds()).length === 5);
   expect("[history] no reshuffle button", (await page.locator("#reshuffleBtn").count()) === 0);
@@ -238,7 +242,19 @@ await run(browser, "streak", { width: 390, height: 844 }, async page => {
   expect("[streak] 10 players on 1 court never rest 3 in a row", stored.rounds.length === 13 && longest <= 2,
     `rounds ${stored.rounds.length}, longest ${longest}`);
 
-  const box = await page.locator(".card.top .rest-list").boundingBox();
+  const list = page.locator(".card.top .rest-list");
+  const before = await list.evaluate(el => ({ overflows: el.scrollWidth > el.clientWidth, faded: el.classList.contains("more") }));
+  expect("[streak] six resting names overflow and fade at the edge", before.overflows && before.faded, JSON.stringify(before));
+  await list.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${OUT}/streak-02-rest-scrolled.png` });
+  const end = await list.evaluate(el => ({
+    faded: el.classList.contains("more"),
+    lastVisible: el.lastElementChild.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1,
+  }));
+  expect("[streak] scrolling reveals the last name and drops the fade", end.lastVisible && !end.faded, JSON.stringify(end));
+
+  const box = await list.boundingBox();
   const x = box.x + box.width / 2, y = box.y + box.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();

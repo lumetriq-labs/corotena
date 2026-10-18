@@ -19,8 +19,6 @@ export interface StackHandlers {
   cancelLatest: () => void;
 }
 
-/** Temporarily off while checking whether the cancel button causes the missed first tap on iOS. */
-const CANCEL_BUTTON = false;
 const PAST_VISIBLE = 3;
 const THRESHOLD = 80;
 const ANIMATION_MS = 400;
@@ -70,15 +68,16 @@ function fillCard(el: HTMLElement, view: StackView, i: number, onCancel: () => v
   const strip = h("div", "strip", h("div", "no", String(i + 1), h("small", "", "試合目")));
   if (round.rest.length) {
     const list = h("div", "rest-list", ...round.rest.map(p => h("span", prevRest.has(p) ? "warn" : "", view.name(p))));
+    const fade = () => list.classList.toggle("more", list.scrollLeft + list.clientWidth < list.scrollWidth - 1);
+    list.addEventListener("scroll", fade, { passive: true });
+    requestAnimationFrame(fade);
     strip.append(h("div", "rest", "🪑", list));
   }
-  if (CANCEL_BUTTON) {
-    const cancel = h("button", "cancel", "✕") as HTMLButtonElement;
-    cancel.type = "button";
-    cancel.setAttribute("aria-label", `${i + 1}試合目の組み合わせを取り消す`);
-    cancel.addEventListener("click", () => { if (el.classList.contains("cancellable")) onCancel(); });
-    strip.append(cancel);
-  }
+  const cancel = h("button", "cancel", "✕") as HTMLButtonElement;
+  cancel.type = "button";
+  cancel.setAttribute("aria-label", `${i + 1}試合目の組み合わせを取り消す`);
+  cancel.addEventListener("click", () => { if (el.classList.contains("cancellable")) onCancel(); });
+  strip.append(cancel);
   const pastPairs = tally(history).pair;
   el.replaceChildren(strip, h("div", "courts", ...round.matches.map(m => courtEl(m, view, pastPairs))));
 }
@@ -218,7 +217,7 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
       }
       const { el } = card;
       el.classList.toggle("top", depth === 0);
-      el.classList.toggle("cancellable", CANCEL_BUTTON && depth === 0 && i > 0 && i === view.rounds.length - 1);
+      el.classList.toggle("cancellable", depth === 0 && i > 0 && i === view.rounds.length - 1);
       el.style.zIndex = String(100 + i);
       if (isNew) {
         el.classList.add("dragging");
