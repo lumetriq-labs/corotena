@@ -109,9 +109,6 @@ export const credits = (s: State): Map<MemberId, number> =>
 const appearsIn = (id: MemberId, rounds: Round[]) =>
   rounds.some(r => r.rest.includes(id) || r.matches.some(m => m.a.includes(id) || m.b.includes(id)));
 
-/** Rounds already played. The newest round stays open until the next one is dealt, so it gets regenerated. */
-const finishedRounds = (s: State) => s.rounds.slice(0, Math.max(s.index, s.rounds.length - 1));
-
 /** Games each member has been on court for, up to and including the round on screen. Credit isn't included. */
 export const gamesPlayed = (s: State): Map<MemberId, number> => tally(s.rounds.slice(0, s.index + 1)).play;
 
@@ -121,7 +118,8 @@ export const gamesPlayed = (s: State): Map<MemberId, number> => tally(s.rounds.s
  * Never lowers a count they already have.
  */
 function levelUp(s: State, m: Member): void {
-  const played = tally(finishedRounds(s)).play;
+  // Every dealt card counts: once shown, a round may already be in play and is never rewritten.
+  const played = tally(s.rounds).play;
   const games = (x: Member) => (played.get(x.id) ?? 0) + (x.credit ?? 0);
   const others = roster(s).filter(x => x.active && x.id !== m.id);
   if (!others.length) return;

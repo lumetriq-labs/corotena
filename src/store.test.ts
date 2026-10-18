@@ -90,7 +90,7 @@ describe("members", () => {
     const s = initialState();
     for (const n of ["A", "B", "C", "D", "E"]) addMember(s, n);
     const [a, b, c, d, e] = s.members.map(m => m.id) as [string, string, string, string, string];
-    // Two finished rounds plus the round in play (index 2), which is excluded from the count.
+    // Every dealt round counts, including the one on screen: a 3, b 3, c 2, d 2, e 2.
     s.rounds = [
       { matches: [{ a: [a, b], b: [c, d] }], rest: [e] },
       { matches: [{ a: [a, e], b: [c, b] }], rest: [d] },
@@ -99,7 +99,7 @@ describe("members", () => {
     s.index = 2;
 
     addMember(s, "F");
-    expect(s.members.find(m => m.name === "F")?.credit).toBe(1);
+    expect(s.members.find(m => m.name === "F")?.credit).toBe(2);
 
     toggleMember(s, a);
     toggleMember(s, a);
@@ -110,11 +110,11 @@ describe("members", () => {
     s.rounds.push({ matches: [{ a: [a, b], b: [c, d] }], rest: [] });
     s.rounds.push({ matches: [{ a: [a, b], b: [c, d] }], rest: [] });
     s.index = 4;
-    // Finished rounds 1–4: a 4, b 4, c 3, d 3, e 2 → e returns level with c and d.
+    // Rounds 1–5: a 5, b 5, c 4, d 4, e 2 → e returns level with c and d.
     toggleMember(s, e);
-    expect(s.members.find(m => m.id === e)?.credit).toBe(1);
+    expect(s.members.find(m => m.id === e)?.credit).toBe(2);
 
-    expect(parseState(JSON.parse(JSON.stringify(s)))?.members.find(m => m.id === e)?.credit).toBe(1);
+    expect(parseState(JSON.parse(JSON.stringify(s)))?.members.find(m => m.id === e)?.credit).toBe(2);
     resetRounds(s);
     expect(s.members.some(m => m.credit)).toBe(false);
   });

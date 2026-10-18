@@ -15,6 +15,8 @@ export interface StackHandlers {
   commit: (dir: Direction) => boolean;
   jumpTo: (index: number) => void;
   openMembers: () => void;
+  /** Cancels the newest round. Only offered on the newest card when it's on top and isn't the first round. */
+  cancelLatest: () => void;
 }
 
 const PAST_VISIBLE = 3;
@@ -67,6 +69,10 @@ function fillCard(el: HTMLElement, view: StackView, i: number) {
   if (round.rest.length) {
     strip.append(h("div", "rest", "🪑", ...round.rest.map(p => h("span", prevRest.has(p) ? "warn" : "", view.name(p)))));
   }
+  const cancel = h("button", "cancel", "✕") as HTMLButtonElement;
+  cancel.type = "button";
+  cancel.setAttribute("aria-label", `${i + 1}試合目の組み合わせを取り消す`);
+  strip.append(cancel);
   const pastPairs = tally(history).pair;
   el.replaceChildren(strip, h("div", "courts", ...round.matches.map(m => courtEl(m, view, pastPairs))));
 }
@@ -99,8 +105,12 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
 
   function attachPointerSwipe(el: HTMLElement, i: number) {
     let startY = 0, dy = 0, active = false;
+    el.addEventListener("click", e => {
+      if ((e.target as HTMLElement).closest(".cancel") && el.classList.contains("cancellable")) handlers.cancelLatest();
+    });
     el.addEventListener("pointerdown", e => {
       if (animating || e.button !== 0) return;
+      if ((e.target as HTMLElement).closest(".cancel") && el.classList.contains("cancellable")) return;
       if (!el.classList.contains("top")) {
         if (i < view.index) { lockAnimation(); handlers.jumpTo(i); }
         return;
@@ -202,6 +212,7 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
       }
       const { el } = card;
       el.classList.toggle("top", depth === 0);
+      el.classList.toggle("cancellable", depth === 0 && i > 0 && i === view.rounds.length - 1);
       el.style.zIndex = String(100 + i);
       if (isNew) {
         el.classList.add("dragging");
@@ -226,10 +237,10 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
   }
 
   const HINT_MS = 2600;
-  /** Briefly shows how to advance; disappears on the first touch or after a few seconds. */
-  function hint(text: string) {
-    if (stack.querySelector(".hint")) return;
-    const el = h("div", "hint glass", h("span", "hint-hand", "👆"), text);
+  /** Briefly shows a message; disappears on the first touch or after a few seconds. Replaces one already showing. */
+  function hint(text: string, { hand = true } = {}) {
+    stack.querySelector(".hint")?.remove();
+    const el = hand ? h("div", "hint glass", h("span", "hint-hand", "👆"), text) : h("div", "hint glass", text);
     el.setAttribute("role", "status");
     stack.append(el);
     const dismiss = () => {

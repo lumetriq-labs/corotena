@@ -83,6 +83,11 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .strip .rest { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; }
 .strip .rest span { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
 .strip .rest span.warn { background: var(--warn); color: #1c1c1e; }
+.strip .cancel { display: none; flex: none; margin-left: auto; width: 30px; height: 30px; border-radius: 50%; place-items: center;
+  border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.55); color: var(--muted);
+  font-size: 13px; font-weight: 900; cursor: pointer; }
+.strip .rest ~ .cancel { margin-left: 0; }
+.card.cancellable .cancel { display: grid; }
 
 .courts { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; gap: var(--gap); justify-content: center; align-content: flex-start;
   padding: 0 var(--pad) var(--bottom); transition: opacity .3s; }
