@@ -135,3 +135,8 @@ showHint();
 watchForUpdates();
 enableOffline();
 enableDebug();
+
+// Without these no-op listeners, iOS Safari ignores the first tap elsewhere while the newest card (with its ✕) is on top.
+for (const type of ["touchstart", "touchend", "pointerdown", "pointerup", "mouseover", "mousemove", "mousedown", "mouseup", "click"]) {
+  window.addEventListener(type, () => {}, { capture: true, passive: true });
+}
