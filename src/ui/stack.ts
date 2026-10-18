@@ -82,6 +82,23 @@ function fillCard(el: HTMLElement, view: StackView, i: number, onCancel: () => v
   el.replaceChildren(strip, h("div", "courts", ...round.matches.map(m => courtEl(m, view, pastPairs))));
 }
 
+// pointerup arrives before touchend. If a button (the ✕) appears while iOS still counts the touch as ongoing,
+// iOS Safari drops the next tap elsewhere, so cards are redrawn only once the touch has fully ended.
+function afterTouchEnds(fn: () => void) {
+  let done = false;
+  const run = () => {
+    if (done) return;
+    done = true;
+    window.removeEventListener("touchend", run, true);
+    window.removeEventListener("touchcancel", run, true);
+    clearTimeout(fallback);
+    setTimeout(fn);
+  };
+  window.addEventListener("touchend", run, { capture: true, passive: true });
+  window.addEventListener("touchcancel", run, { capture: true, passive: true });
+  const fallback = setTimeout(run, 300);
+}
+
 export function createStack(stack: HTMLElement, handlers: StackHandlers) {
   const cards = new Map<number, { el: HTMLElement; round: Round }>();
   let view: StackView = { rounds: [], index: 0, name: id => id };
@@ -126,10 +143,13 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
       dy = e.clientY - startY;
       drag(el, dy);
     });
-    const end = () => {
+    const end = (e: PointerEvent) => {
       if (!active) return;
       active = false;
-      if (Math.abs(dy) <= THRESHOLD || !commit(dy < 0 ? "next" : "back")) settle(el);
+      const moved = dy;
+      const finish = () => { if (Math.abs(moved) <= THRESHOLD || !commit(moved < 0 ? "next" : "back")) settle(el); };
+      if (e.type === "pointerup" && e.pointerType === "touch") afterTouchEnds(finish);
+      else finish();
     };
     el.addEventListener("pointerup", end);
     el.addEventListener("pointercancel", end);

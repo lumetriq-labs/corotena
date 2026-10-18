@@ -292,6 +292,8 @@ await run(browser, "touch", { width: 390, height: 844 }, async page => {
   await tap("#openMembers");
   const log = await page.locator("#debugLog").textContent();
   expect("[touch] ?debug=1 logs touches and clicks", log.includes("touchstart") && log.includes("click button#openMembers"), log.slice(-300));
+  const swipeEnd = log.split("\n").find(l => / touchend div/.test(l)) ?? "";
+  expect("[touch] cards are redrawn only after the touch has ended", /dom\+0$/.test(swipeEnd), swipeEnd);
   expect("[touch] the members sheet still opens with the log on", (await page.locator("#sheet.open").count()) === 1);
   await page.screenshot({ path: `${OUT}/touch-debug.png` });
 }, { hasTouch: true, isMobile: true });
