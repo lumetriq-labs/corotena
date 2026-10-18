@@ -19,13 +19,11 @@ button { font-family: inherit; }
 
 /* Soft backdrop so the glass has something to refract */
 .backdrop { position: fixed; inset: 0; overflow: hidden; z-index: -1; }
-.blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; animation: drift 22s ease-in-out infinite alternate; }
+.blob { position: absolute; border-radius: 50%; filter: blur(60px); opacity: .55; }
 .blob.ball  { width: 60vmax; height: 60vmax; left: -20vmax; top: -18vmax; background: #73765a; }
-.blob.hard  { width: 55vmax; height: 55vmax; right: -22vmax; top: 18vh; background: #545e6b; animation-delay: -7s; }
-.blob.grass { width: 50vmax; height: 50vmax; left: -12vmax; bottom: -22vmax; background: #55625b; animation-delay: -13s; }
-.blob.clay  { width: 28vmax; height: 28vmax; right: 0; bottom: 4vh; background: #75665f; opacity: .35; animation-delay: -4s; }
-@keyframes drift { to { translate: 6vmax 8vmax; scale: 1.15; } }
-@media (prefers-reduced-motion: reduce) { .blob { animation: none; } }
+.blob.hard  { width: 55vmax; height: 55vmax; right: -22vmax; top: 18vh; background: #545e6b; }
+.blob.grass { width: 50vmax; height: 50vmax; left: -12vmax; bottom: -22vmax; background: #55625b; }
+.blob.clay  { width: 28vmax; height: 28vmax; right: 0; bottom: 4vh; background: #75665f; opacity: .35; }
 
 /* Liquid-glass material */
 .glass {

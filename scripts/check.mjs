@@ -285,6 +285,10 @@ await run(browser, "touch", { width: 390, height: 844 }, async page => {
   expect("[touch] priority switches on the first tap after a swipe",
     (await page.getAttribute('#priority button[data-p="variety"]', "aria-checked")) === "true");
 
+  await page.waitForTimeout(7000);
+  const running = await page.evaluate(() => document.getAnimations().map(a => a.animationName ?? a.constructor.name));
+  expect("[touch] nothing animates while idle", running.length === 0, running.join(","));
+
   expect("[touch] no debug log without ?debug", (await page.locator("#debugLog").count()) === 0);
   await page.goto(`${URL}?debug=1`);
   await page.waitForTimeout(500);
