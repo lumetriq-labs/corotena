@@ -4,7 +4,6 @@
   --team-a: #ff7a45;
   --team-b: #ffd23f;
   --warn: #ff9f0a;
-  --danger: #ff3b30;
   --strip: 52px;
   --radius: 26px;
 }
@@ -81,19 +80,9 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .strip { height: var(--strip); flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
 .strip .no { flex: none; white-space: nowrap; font-size: 22px; font-weight: 900; letter-spacing: .01em; }
 .strip .no small { font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 2px; }
-/* Long rest lists scroll sideways; vertical drags still reach the card's swipe handling. */
-.strip .rest { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; min-width: 0; }
-.strip .rest-list { display: flex; gap: 6px; min-width: 0;
-  overflow-x: auto; overscroll-behavior-x: contain; touch-action: pan-x; scrollbar-width: none; }
-.strip .rest-list::-webkit-scrollbar { display: none; }
-.strip .rest-list.more { mask-image: linear-gradient(to right, #000 80%, transparent); -webkit-mask-image: linear-gradient(to right, #000 80%, transparent); }
-.strip .rest-list span { flex: none; background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
-.strip .rest-list span.warn { background: var(--warn); color: #1c1c1e; }
-.strip .cancel { display: none; flex: none; margin-left: auto; width: 30px; height: 30px; border-radius: 50%; place-items: center;
-  border: 1px solid rgba(255,255,255,.8); background: var(--danger); color: #fff;
-  box-shadow: 0 2px 8px rgba(255, 59, 48, .35); font-size: 13px; font-weight: 900; cursor: pointer; }
-.strip .rest ~ .cancel { margin-left: 0; }
-.card.cancellable .cancel { display: grid; }
+.strip .rest { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; min-width: 0; overflow: hidden; }
+.strip .rest span { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.strip .rest span.warn { background: var(--warn); color: #1c1c1e; }
 
 .courts { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; gap: var(--gap); justify-content: center; align-content: flex-start;
   padding: 0 var(--pad) var(--bottom); transition: opacity .3s; }

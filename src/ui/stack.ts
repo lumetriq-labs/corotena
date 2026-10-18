@@ -15,8 +15,6 @@ export interface StackHandlers {
   commit: (dir: Direction) => boolean;
   jumpTo: (index: number) => void;
   openMembers: () => void;
-  /** Cancels the newest round. Only offered on the newest card when it's on top and isn't the first round. */
-  cancelLatest: () => void;
 }
 
 const PAST_VISIBLE = 3;
@@ -61,24 +59,14 @@ function courtEl(m: Match, view: StackView, pastPairs: Map<string, number>): HTM
       player(m.b[0], m.b[1], "p-b1", "b"), player(m.b[1], m.b[0], "p-b2", "b")));
 }
 
-function fillCard(el: HTMLElement, view: StackView, i: number, onCancel: () => void) {
+function fillCard(el: HTMLElement, view: StackView, i: number) {
   const round = view.rounds[i]!;
   const history = view.rounds.slice(0, i);
   const prevRest = new Set(history[history.length - 1]?.rest ?? []);
   const strip = h("div", "strip", h("div", "no", String(i + 1), h("small", "", "試合目")));
   if (round.rest.length) {
-    const list = h("div", "rest-list", ...round.rest.map(p => h("span", prevRest.has(p) ? "warn" : "", view.name(p))));
-    const fade = () => list.classList.toggle("more", list.scrollLeft + list.clientWidth < list.scrollWidth - 1);
-    list.addEventListener("scroll", fade, { passive: true });
-    requestAnimationFrame(fade);
-    strip.append(h("div", "rest", "🪑", list));
+    strip.append(h("div", "rest", "🪑", ...round.rest.map(p => h("span", prevRest.has(p) ? "warn" : "", view.name(p)))));
   }
-  const cancel = h("button", "cancel", "✕") as HTMLButtonElement;
-  cancel.type = "button";
-  cancel.setAttribute("aria-label", `${i + 1}試合目の組み合わせを取り消す`);
-  // Listening on the button rather than the card: a click handler on the card makes iOS treat the whole card as tappable.
-  cancel.addEventListener("click", () => { if (el.classList.contains("cancellable")) onCancel(); });
-  strip.append(cancel);
   const pastPairs = tally(history).pair;
   el.replaceChildren(strip, h("div", "courts", ...round.matches.map(m => courtEl(m, view, pastPairs))));
 }
@@ -113,24 +101,20 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
     let startY = 0, dy = 0, active = false;
     el.addEventListener("pointerdown", e => {
       if (animating || e.button !== 0) return;
-      if ((e.target as HTMLElement).closest(".cancel") && el.classList.contains("cancellable")) return;
       if (!el.classList.contains("top")) {
         if (i < view.index) { lockAnimation(); handlers.jumpTo(i); }
         return;
       }
       active = true; startY = e.clientY; dy = 0;
       el.classList.add("dragging");
-      // Touch is captured implicitly. Capturing it explicitly as well makes iOS Safari keep the capture
-      // after the swipe, so the next tap anywhere else (members, priority) is swallowed by this card.
-      if (e.pointerType !== "touch") el.setPointerCapture(e.pointerId);
+      el.setPointerCapture(e.pointerId);
     });
     el.addEventListener("pointermove", e => {
       if (!active) return;
       dy = e.clientY - startY;
       drag(el, dy);
     });
-    const end = (e: PointerEvent) => {
-      if (el.hasPointerCapture(e.pointerId)) el.releasePointerCapture(e.pointerId);
+    const end = () => {
       if (!active) return;
       active = false;
       if (Math.abs(dy) <= THRESHOLD || !commit(dy < 0 ? "next" : "back")) settle(el);
@@ -208,17 +192,16 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
         stack.append(el);
         card = { el, round: view.rounds[i]! };
         cards.set(i, card);
-        fillCard(el, view, i, handlers.cancelLatest);
+        fillCard(el, view, i);
       } else if (card.round !== view.rounds[i]) {
         card.round = view.rounds[i]!;
-        fillCard(card.el, view, i, handlers.cancelLatest);
+        fillCard(card.el, view, i);
         card.el.classList.remove("swap");
         void card.el.offsetWidth;
         card.el.classList.add("swap");
       }
       const { el } = card;
       el.classList.toggle("top", depth === 0);
-      el.classList.toggle("cancellable", depth === 0 && i > 0 && i === view.rounds.length - 1);
       el.style.zIndex = String(100 + i);
       if (isNew) {
         el.classList.add("dragging");
@@ -243,30 +226,22 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
   }
 
   const HINT_MS = 2600;
-  /**
-   * Briefly shows a message; disappears on the first touch or after a few seconds. Replaces one already showing.
-   * `then` runs only if it ran its full time, so a follow-up never interrupts someone already using the cards.
-   */
-  function hint(text: string, { hand = true, then }: { hand?: boolean; then?: () => void } = {}) {
-    stack.querySelector(".hint")?.remove();
-    const el = hand ? h("div", "hint glass", h("span", "hint-hand", "👆"), text) : h("div", "hint glass", text);
+  /** Briefly shows how to advance; disappears on the first touch or after a few seconds. */
+  function hint(text: string) {
+    if (stack.querySelector(".hint")) return;
+    const el = h("div", "hint glass", h("span", "hint-hand", "👆"), text);
     el.setAttribute("role", "status");
     stack.append(el);
-    const dismiss = (timedOut: boolean) => {
+    const dismiss = () => {
       clearTimeout(timer);
-      stack.removeEventListener("pointerdown", touched);
-      stack.removeEventListener("wheel", touched);
+      stack.removeEventListener("pointerdown", dismiss);
+      stack.removeEventListener("wheel", dismiss);
       el.classList.add("out");
-      setTimeout(() => {
-        const replaced = !el.isConnected;
-        el.remove();
-        if (timedOut && !replaced) then?.();
-      }, 400);
+      setTimeout(() => el.remove(), 400);
     };
-    const touched = () => dismiss(false);
-    const timer = setTimeout(() => dismiss(true), HINT_MS);
-    stack.addEventListener("pointerdown", touched);
-    stack.addEventListener("wheel", touched, { passive: true });
+    const timer = setTimeout(dismiss, HINT_MS);
+    stack.addEventListener("pointerdown", dismiss);
+    stack.addEventListener("wheel", dismiss, { passive: true });
   }
 
   return { render, commit, hint, isAnimating: () => animating };

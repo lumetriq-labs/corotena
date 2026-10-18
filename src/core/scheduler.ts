@@ -61,17 +61,11 @@ type Arrangement = MemberId[];
 
 function createEvaluator(
   players: readonly MemberId[], history: readonly Round[], restN: number, courts: number, priority: Priority,
-  credit: ReadonlyMap<MemberId, number> | undefined, satOut: ReadonlySet<MemberId> | undefined,
+  credit: ReadonlyMap<MemberId, number> | undefined,
 ) {
   const t = tally(history);
   const last = history[history.length - 1];
-  // Rounds each player has rested in a row up to now. Players who weren't there count as having rested once.
-  const streak = new Map(players.map(p => {
-    if (satOut?.has(p)) return [p, 1];
-    let n = 0;
-    for (let i = history.length - 1; i >= 0 && history[i]!.rest.includes(p); i--) n++;
-    return [p, n];
-  }));
+  const lastRest = new Set(last?.rest ?? []);
   const lastPairs = new Set(last?.matches.flatMap(m => [pairKey(...m.a), pairKey(...m.b)]) ?? []);
   const basePlay = new Map(players.map(p => [p, (t.play.get(p) ?? 0) + (credit?.get(p) ?? 0)]));
 
@@ -81,9 +75,7 @@ function createEvaluator(
     for (let i = 0; i < order.length; i++) {
       const p = order[i]!;
       const resting = i < restN;
-      // Under the rest priority, squared so a third rest in a row costs more than two people each resting twice.
-      // Not under variety: keeping streaks short means rotating the same groups, which repeats pairs.
-      if (resting) consecutive += priority === "rest" ? streak.get(p)! ** 2 : Math.min(streak.get(p)!, 1);
+      if (resting && lastRest.has(p)) consecutive++;
       const games = basePlay.get(p)! + (resting ? 0 : 1);
       if (games > maxPlay) maxPlay = games;
       if (games < minPlay) minPlay = games;
@@ -207,8 +199,6 @@ export interface GenerateOptions {
   random?: () => number;
   /** Games counted as already played, so mid-session joiners don't have to catch up on rounds they missed. */
   credit?: ReadonlyMap<MemberId, number>;
-  /** Players who weren't in the last round (e.g. just joined), treated as having rested in it. */
-  satOut?: ReadonlySet<MemberId>;
 }
 
 /** Above this many combinations, fall back from exhaustive search to restarted local search. */
@@ -220,7 +210,7 @@ export function generateRound(players: readonly MemberId[], history: readonly Ro
   if (courts < 1) return null;
   const random = opts.random ?? Math.random;
   const restN = players.length - courts * 4;
-  const evaluate = createEvaluator(players, history, restN, courts, opts.priority, opts.credit, opts.satOut);
+  const evaluate = createEvaluator(players, history, restN, courts, opts.priority, opts.credit);
   const order = countArrangements(players.length, courts) <= EXHAUSTIVE_LIMIT
     ? exhaustive(players, restN, evaluate, random)
     : localSearch(players, restN, evaluate, random, LOCAL_SEARCH_RESTARTS);
