@@ -4,6 +4,7 @@
   --team-a: #ff7a45;
   --team-b: #ffd23f;
   --warn: #ff9f0a;
+  --danger: #ff3b30;
   --strip: 52px;
   --radius: 26px;
 }
@@ -84,8 +85,8 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .strip .rest span { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
 .strip .rest span.warn { background: var(--warn); color: #1c1c1e; }
 .strip .cancel { display: none; flex: none; margin-left: auto; width: 30px; height: 30px; border-radius: 50%; place-items: center;
-  border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.55); color: var(--muted);
-  font-size: 13px; font-weight: 900; cursor: pointer; }
+  border: 1px solid rgba(255,255,255,.8); background: var(--danger); color: #fff;
+  box-shadow: 0 2px 8px rgba(255, 59, 48, .35); font-size: 13px; font-weight: 900; cursor: pointer; }
 .strip .rest ~ .cancel { margin-left: 0; }
 .card.cancellable .cancel { display: grid; }
 

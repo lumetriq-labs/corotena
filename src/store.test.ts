@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { generateRound, mulberry32, tally } from "./core/scheduler";
 import {
-  activeIds, addMember, gamesPlayed, initialState, load, parseState, removeInactive, removeMember, resetAll, resetRounds, save, toggleMember,
+  activeIds, addMember, credits, gamesPlayed, initialState, load, parseState, removeInactive, removeMember, resetAll, resetRounds, save, toggleMember,
 } from "./store";
 
 describe("parseState", () => {
@@ -86,7 +87,7 @@ describe("members", () => {
     expect(s.members.some(m => m.id === f)).toBe(false);
   });
 
-  it("starts late joiners and returners level with the least-played member", () => {
+  it("starts late joiners and returners one game behind the least-played member", () => {
     const s = initialState();
     for (const n of ["A", "B", "C", "D", "E"]) addMember(s, n);
     const [a, b, c, d, e] = s.members.map(m => m.id) as [string, string, string, string, string];
@@ -99,7 +100,7 @@ describe("members", () => {
     s.index = 2;
 
     addMember(s, "F");
-    expect(s.members.find(m => m.name === "F")?.credit).toBe(2);
+    expect(s.members.find(m => m.name === "F")?.credit).toBe(1);
 
     toggleMember(s, a);
     toggleMember(s, a);
@@ -110,11 +111,11 @@ describe("members", () => {
     s.rounds.push({ matches: [{ a: [a, b], b: [c, d] }], rest: [] });
     s.rounds.push({ matches: [{ a: [a, b], b: [c, d] }], rest: [] });
     s.index = 4;
-    // Rounds 1–5: a 5, b 5, c 4, d 4, e 2 → e returns level with c and d.
+    // Rounds 1–5: a 5, b 5, c 4, d 4, e 2 → e returns one behind c and d.
     toggleMember(s, e);
-    expect(s.members.find(m => m.id === e)?.credit).toBe(2);
+    expect(s.members.find(m => m.id === e)?.credit).toBe(1);
 
-    expect(parseState(JSON.parse(JSON.stringify(s)))?.members.find(m => m.id === e)?.credit).toBe(2);
+    expect(parseState(JSON.parse(JSON.stringify(s)))?.members.find(m => m.id === e)?.credit).toBe(1);
     resetRounds(s);
     expect(s.members.some(m => m.credit)).toBe(false);
   });
@@ -141,8 +142,36 @@ describe("members", () => {
     s.rounds.push({ matches: [{ a: [a, c], b: [b, d] }], rest: [] });
     s.index = 2;
     addMember(s, "E");
-    expect(s.members.find(m => m.id === e)).toMatchObject({ active: true, credit: 2 });
+    expect(s.members.find(m => m.id === e)).toMatchObject({ active: true, credit: 1 });
   });
+
+  it("deals members who join together into the next round, then keeps everyone within one game", () => {
+    for (const priority of ["rest", "variety"] as const) {
+      for (let seed = 1; seed <= 5; seed++) {
+        const s = initialState();
+        s.courts = 2;
+        s.priority = priority;
+        const random = mulberry32(seed);
+        for (let i = 0; i < 8; i++) addMember(s, `M${i}`);
+        const deal = () => {
+          const r = generateRound(activeIds(s), s.rounds, { courts: s.courts, priority: s.priority, credit: credits(s), random });
+          s.rounds.push(r!);
+          s.index = s.rounds.length - 1;
+          return r!;
+        };
+        for (let i = 0; i < 3; i++) deal();
+        addMember(s, "J1");
+        addMember(s, "J2");
+        const joiners = s.members.filter(m => m.name.startsWith("J")).map(m => m.id);
+        expect(deal().rest.filter(id => joiners.includes(id))).toEqual([]);
+
+        for (let i = 0; i < 10; i++) deal();
+        const played = tally(s.rounds).play;
+        const totals = activeIds(s).map(id => (played.get(id) ?? 0) + (credits(s).get(id) ?? 0));
+        expect(Math.max(...totals) - Math.min(...totals)).toBeLessThanOrEqual(1);
+      }
+    }
+  }, 30_000);
 
   it("counts games up to the round on screen, without credit", () => {
     const s = initialState();

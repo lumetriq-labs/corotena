@@ -113,17 +113,20 @@ const appearsIn = (id: MemberId, rounds: Round[]) =>
 export const gamesPlayed = (s: State): Map<MemberId, number> => tally(s.rounds.slice(0, s.index + 1)).play;
 
 /**
- * Starts a joining or returning member level with the least-played active member, so they
- * play at the normal pace instead of catching up on rounds they weren't there for.
- * Never lowers a count they already have.
+ * Starts a joining or returning member one game behind the least-played member of the latest round,
+ * so they're dealt into the next round and then play at the normal pace instead of catching up
+ * on rounds they weren't there for. Never lowers a count they already have.
  */
 function levelUp(s: State, m: Member): void {
+  const latest = s.rounds[s.rounds.length - 1];
+  if (!latest) return;
   // Every dealt card counts: once shown, a round may already be in play and is never rewritten.
   const played = tally(s.rounds).play;
   const games = (x: Member) => (played.get(x.id) ?? 0) + (x.credit ?? 0);
-  const others = roster(s).filter(x => x.active && x.id !== m.id);
+  // Members who joined together are compared with the group already there, not with each other.
+  const others = roster(s).filter(x => x.active && x.id !== m.id && appearsIn(x.id, [latest]));
   if (!others.length) return;
-  const target = Math.min(...others.map(games));
+  const target = Math.min(...others.map(games)) - 1;
   const credit = Math.max(m.credit ?? 0, target - (played.get(m.id) ?? 0));
   if (credit > 0) m.credit = credit;
 }

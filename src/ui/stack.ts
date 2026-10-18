@@ -237,22 +237,30 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
   }
 
   const HINT_MS = 2600;
-  /** Briefly shows a message; disappears on the first touch or after a few seconds. Replaces one already showing. */
-  function hint(text: string, { hand = true } = {}) {
+  /**
+   * Briefly shows a message; disappears on the first touch or after a few seconds. Replaces one already showing.
+   * `then` runs only if it ran its full time, so a follow-up never interrupts someone already using the cards.
+   */
+  function hint(text: string, { hand = true, then }: { hand?: boolean; then?: () => void } = {}) {
     stack.querySelector(".hint")?.remove();
     const el = hand ? h("div", "hint glass", h("span", "hint-hand", "👆"), text) : h("div", "hint glass", text);
     el.setAttribute("role", "status");
     stack.append(el);
-    const dismiss = () => {
+    const dismiss = (timedOut: boolean) => {
       clearTimeout(timer);
-      stack.removeEventListener("pointerdown", dismiss);
-      stack.removeEventListener("wheel", dismiss);
+      stack.removeEventListener("pointerdown", touched);
+      stack.removeEventListener("wheel", touched);
       el.classList.add("out");
-      setTimeout(() => el.remove(), 400);
+      setTimeout(() => {
+        const replaced = !el.isConnected;
+        el.remove();
+        if (timedOut && !replaced) then?.();
+      }, 400);
     };
-    const timer = setTimeout(dismiss, HINT_MS);
-    stack.addEventListener("pointerdown", dismiss);
-    stack.addEventListener("wheel", dismiss, { passive: true });
+    const touched = () => dismiss(false);
+    const timer = setTimeout(() => dismiss(true), HINT_MS);
+    stack.addEventListener("pointerdown", touched);
+    stack.addEventListener("wheel", touched, { passive: true });
   }
 
   return { render, commit, hint, isAnimating: () => animating };

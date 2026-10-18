@@ -89,7 +89,7 @@ const sheet = createMembersSheet({
   closed() {
     const notice = noticePending;
     noticePending = false;
-    setTimeout(() => (notice ? stack.hint(NEXT_ROUND_NOTICE, { hand: false }) : showHint({ always: true })), 350);
+    setTimeout(() => (notice ? showNotice() : showHint({ always: true })), 350);
   },
 });
 
@@ -109,12 +109,16 @@ function showHint({ always = false } = {}) {
   stack.hint(matchMedia("(pointer: coarse)").matches ? "上にスワイプで次の試合" : "スクロールで次の試合");
 }
 
+function showNotice() {
+  stack.hint(NEXT_ROUND_NOTICE, { hand: false, then: () => showHint({ always: true }) });
+}
+
 byId("priority").addEventListener("click", e => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-p]");
   const p = b?.dataset.p as Priority | undefined;
   if (!p || p === state.priority) return;
   state.priority = p;
-  if (applySettings()) stack.hint(NEXT_ROUND_NOTICE, { hand: false });
+  if (applySettings()) showNotice();
 });
 byId("openMembers").addEventListener("click", () => sheet.open());
 
