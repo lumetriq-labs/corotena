@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { generateRound, mulberry32, tally } from "./core/scheduler";
 import {
-  activeIds, addMember, credits, gamesPlayed, initialState, load, parseState, removeInactive, removeMember, resetAll, resetRounds, save, toggleMember,
+  activeIds, addMember, credits, gamesPlayed, initialState, load, parseState, removeInactive, removeMember, resetAll, resetRounds, save,
+  sittingOut, toggleMember,
 } from "./store";
 
 describe("parseState", () => {
@@ -87,7 +88,7 @@ describe("members", () => {
     expect(s.members.some(m => m.id === f)).toBe(false);
   });
 
-  it("starts late joiners and returners one game behind the least-played member", () => {
+  it("starts late joiners and returners level with the least-played member", () => {
     const s = initialState();
     for (const n of ["A", "B", "C", "D", "E"]) addMember(s, n);
     const [a, b, c, d, e] = s.members.map(m => m.id) as [string, string, string, string, string];
@@ -100,7 +101,7 @@ describe("members", () => {
     s.index = 2;
 
     addMember(s, "F");
-    expect(s.members.find(m => m.name === "F")?.credit).toBe(1);
+    expect(s.members.find(m => m.name === "F")?.credit).toBe(2);
 
     toggleMember(s, a);
     toggleMember(s, a);
@@ -111,13 +112,13 @@ describe("members", () => {
     s.rounds.push({ matches: [{ a: [a, b], b: [c, d] }], rest: [] });
     s.rounds.push({ matches: [{ a: [a, b], b: [c, d] }], rest: [] });
     s.index = 4;
-    // Rounds 1–5: a 5, b 5, c 4, d 4, e 2 → e returns one behind c and d.
+    // Rounds 1–5: a 5, b 5, c 4, d 4, e 2 → e returns level with c and d.
     toggleMember(s, e);
-    expect(s.members.find(m => m.id === e)?.credit).toBe(1);
+    expect(s.members.find(m => m.id === e)).toMatchObject({ credit: 2, joinedAt: 5 });
 
-    expect(parseState(JSON.parse(JSON.stringify(s)))?.members.find(m => m.id === e)?.credit).toBe(1);
+    expect(parseState(JSON.parse(JSON.stringify(s)))?.members.find(m => m.id === e)).toMatchObject({ credit: 2, joinedAt: 5 });
     resetRounds(s);
-    expect(s.members.some(m => m.credit)).toBe(false);
+    expect(s.members.some(m => m.credit || m.joinedAt)).toBe(false);
   });
 
   it("removes members saved as resting, keeping the history of those who played", () => {
@@ -142,7 +143,22 @@ describe("members", () => {
     s.rounds.push({ matches: [{ a: [a, c], b: [b, d] }], rest: [] });
     s.index = 2;
     addMember(s, "E");
-    expect(s.members.find(m => m.id === e)).toMatchObject({ active: true, credit: 1 });
+    expect(s.members.find(m => m.id === e)).toMatchObject({ active: true, credit: 2 });
+  });
+
+  it("counts joiners as sitting out until they're dealt in, including after the newest round is cancelled", () => {
+    const s = initialState();
+    for (const n of ["A", "B", "C", "D"]) addMember(s, n);
+    const [a, b, c, d] = s.members.map(m => m.id) as [string, string, string, string];
+    expect(s.members.some(m => m.joinedAt !== undefined)).toBe(false);
+    s.rounds = [{ matches: [{ a: [a, b], b: [c, d] }], rest: [] }];
+    addMember(s, "E");
+    const e = s.members.find(m => m.name === "E")!.id;
+    expect([...sittingOut(s)]).toEqual([e]);
+    s.rounds.push({ matches: [{ a: [a, e], b: [c, d] }], rest: [b] });
+    expect(sittingOut(s).size).toBe(0);
+    s.rounds.pop();
+    expect([...sittingOut(s)]).toEqual([e]);
   });
 
   it("deals members who join together into the next round, then keeps everyone within one game", () => {
@@ -154,7 +170,7 @@ describe("members", () => {
         const random = mulberry32(seed);
         for (let i = 0; i < 8; i++) addMember(s, `M${i}`);
         const deal = () => {
-          const r = generateRound(activeIds(s), s.rounds, { courts: s.courts, priority: s.priority, credit: credits(s), random });
+          const r = generateRound(activeIds(s), s.rounds, { courts: s.courts, priority: s.priority, credit: credits(s), satOut: sittingOut(s), random });
           s.rounds.push(r!);
           s.index = s.rounds.length - 1;
           return r!;
@@ -163,7 +179,9 @@ describe("members", () => {
         addMember(s, "J1");
         addMember(s, "J2");
         const joiners = s.members.filter(m => m.name.startsWith("J")).map(m => m.id);
-        expect(deal().rest.filter(id => joiners.includes(id))).toEqual([]);
+        // Pair variety outranks resting twice in a row, so only the rest priority guarantees this.
+        const resting = deal().rest.filter(id => joiners.includes(id));
+        if (priority === "rest") expect(resting).toEqual([]);
 
         for (let i = 0; i < 10; i++) deal();
         const played = tally(s.rounds).play;

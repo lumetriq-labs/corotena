@@ -61,11 +61,11 @@ type Arrangement = MemberId[];
 
 function createEvaluator(
   players: readonly MemberId[], history: readonly Round[], restN: number, courts: number, priority: Priority,
-  credit: ReadonlyMap<MemberId, number> | undefined,
+  credit: ReadonlyMap<MemberId, number> | undefined, satOut: ReadonlySet<MemberId> | undefined,
 ) {
   const t = tally(history);
   const last = history[history.length - 1];
-  const lastRest = new Set(last?.rest ?? []);
+  const lastRest = new Set([...(last?.rest ?? []), ...(satOut ?? [])]);
   const lastPairs = new Set(last?.matches.flatMap(m => [pairKey(...m.a), pairKey(...m.b)]) ?? []);
   const basePlay = new Map(players.map(p => [p, (t.play.get(p) ?? 0) + (credit?.get(p) ?? 0)]));
 
@@ -199,6 +199,8 @@ export interface GenerateOptions {
   random?: () => number;
   /** Games counted as already played, so mid-session joiners don't have to catch up on rounds they missed. */
   credit?: ReadonlyMap<MemberId, number>;
+  /** Players who weren't in the last round (e.g. just joined), treated as having rested in it. */
+  satOut?: ReadonlySet<MemberId>;
 }
 
 /** Above this many combinations, fall back from exhaustive search to restarted local search. */
@@ -210,7 +212,7 @@ export function generateRound(players: readonly MemberId[], history: readonly Ro
   if (courts < 1) return null;
   const random = opts.random ?? Math.random;
   const restN = players.length - courts * 4;
-  const evaluate = createEvaluator(players, history, restN, courts, opts.priority, opts.credit);
+  const evaluate = createEvaluator(players, history, restN, courts, opts.priority, opts.credit, opts.satOut);
   const order = countArrangements(players.length, courts) <= EXHAUSTIVE_LIMIT
     ? exhaustive(players, restN, evaluate, random)
     : localSearch(players, restN, evaluate, random, LOCAL_SEARCH_RESTARTS);

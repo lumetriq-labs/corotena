@@ -4,7 +4,7 @@ import type { Priority } from "./core/types";
 import { watchForUpdates } from "./freshness";
 import { enableOffline } from "./offline";
 import {
-  activeIds, addMember, credits, gamesPlayed, hasSwiped, load, markSwiped, removeInactive, removeMember, resetAll, resetRounds, roster, save,
+  activeIds, addMember, credits, gamesPlayed, hasSwiped, load, markSwiped, removeInactive, removeMember, resetAll, resetRounds, roster, save, sittingOut,
 } from "./store";
 import { byId } from "./ui/dom";
 import { createMembersSheet } from "./ui/members";
@@ -16,7 +16,7 @@ removeInactive(state);
 function ensureCurrent() {
   if (state.rounds.length > state.index) return;
   const r = generateRound(activeIds(state), state.rounds, {
-    courts: state.courts, priority: state.priority, credit: credits(state),
+    courts: state.courts, priority: state.priority, credit: credits(state), satOut: sittingOut(state),
   });
   if (r) state.rounds.push(r);
 }

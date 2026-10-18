@@ -21,10 +21,12 @@ const isStr = (v: unknown): v is string => typeof v === "string";
 function parseMember(v: unknown): Member | null {
   if (!isObj(v) || !isStr(v.id) || !isStr(v.name) || typeof v.active !== "boolean") return null;
   const credit = typeof v.credit === "number" && Number.isFinite(v.credit) && v.credit > 0 ? Math.floor(v.credit) : 0;
+  const joinedAt = typeof v.joinedAt === "number" && Number.isFinite(v.joinedAt) && v.joinedAt > 0 ? Math.floor(v.joinedAt) : 0;
   return {
     id: v.id, name: v.name, active: v.active,
     ...(v.archived === true ? { archived: true } : {}),
     ...(credit ? { credit } : {}),
+    ...(joinedAt ? { joinedAt } : {}),
   };
 }
 
@@ -112,21 +114,26 @@ const appearsIn = (id: MemberId, rounds: Round[]) =>
 /** Games each member has been on court for, up to and including the round on screen. Credit isn't included. */
 export const gamesPlayed = (s: State): Map<MemberId, number> => tally(s.rounds.slice(0, s.index + 1)).play;
 
+/** Members who joined after the newest round was dealt, so they sat it out just like those resting in it. */
+export const sittingOut = (s: State): Set<MemberId> =>
+  new Set(roster(s).filter(m => m.active && m.joinedAt !== undefined && m.joinedAt >= s.rounds.length).map(m => m.id));
+
 /**
- * Starts a joining or returning member one game behind the least-played member of the latest round,
- * so they're dealt into the next round and then play at the normal pace instead of catching up
- * on rounds they weren't there for. Never lowers a count they already have.
+ * Starts a joining or returning member level with the least-played member of the latest round,
+ * so they play at the normal pace instead of catching up on rounds they weren't there for,
+ * and counts them as having sat out that round so the rest rules deal them in next.
+ * Never lowers a count they already have.
  */
 function levelUp(s: State, m: Member): void {
   const latest = s.rounds[s.rounds.length - 1];
   if (!latest) return;
+  m.joinedAt = s.rounds.length;
   // Every dealt card counts: once shown, a round may already be in play and is never rewritten.
   const played = tally(s.rounds).play;
   const games = (x: Member) => (played.get(x.id) ?? 0) + (x.credit ?? 0);
-  // Members who joined together are compared with the group already there, not with each other.
   const others = roster(s).filter(x => x.active && x.id !== m.id && appearsIn(x.id, [latest]));
   if (!others.length) return;
-  const target = Math.min(...others.map(games)) - 1;
+  const target = Math.min(...others.map(games));
   const credit = Math.max(m.credit ?? 0, target - (played.get(m.id) ?? 0));
   if (credit > 0) m.credit = credit;
 }
@@ -180,5 +187,5 @@ export function resetRounds(s: State): void {
   s.rounds = [];
   s.index = 0;
   s.members = s.members.filter(m => !m.archived);
-  for (const m of s.members) delete m.credit;
+  for (const m of s.members) { delete m.credit; delete m.joinedAt; }
 }
