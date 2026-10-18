@@ -108,11 +108,14 @@ await run(browser, "mobile", { width: 390, height: 844 }, async (page, shot) => 
   expect("[mobile] state survives reload", m.title === "3試合目"
     && JSON.stringify(m.stored.rounds) === JSON.stringify(before.rounds), m.title);
 
+  // Round 4 was already dealt, so new settings start at round 5.
   await setMembers(page, ["メンバー9", "メンバー10"], 2);
+  await swipe(page, -160); await swipe(page, -160);
   m = await shot("06-2courts");
-  expect("[mobile] 2 courts", m.courts.length === 2 && ratiosOk(m), JSON.stringify(m.courts));
+  expect("[mobile] 2 courts", m.title === "5試合目" && m.courts.length === 2 && ratiosOk(m), JSON.stringify(m.courts));
 
   await setMembers(page, Array.from({ length: 6 }, (_, i) => `メンバー${i + 11}`), 4);
+  await swipe(page, -160);
   m = await shot("07-4courts");
   expect("[mobile] 4 courts", m.courts.length === 4 && ratiosOk(m), JSON.stringify(m.courts));
   expect("[mobile] no truncated names", m.truncated.length === 0, m.truncated.join(","));
@@ -132,6 +135,8 @@ await run(browser, "desktop", { width: 1280, height: 800 }, async (page, shot) =
   expect("[desktop] ArrowUp goes back", m.title === "1試合目", m.title);
 
   await setMembers(page, Array.from({ length: 9 }, (_, i) => `メンバー${i + 8}`), 4);
+  await page.keyboard.press("ArrowDown"); await page.waitForTimeout(600);
+  await page.keyboard.press("ArrowDown"); await page.waitForTimeout(600);
   m = await shot("03-4courts");
   expect("[desktop] 4 courts", m.courts.length === 4 && ratiosOk(m), JSON.stringify(m.courts));
   expect("[desktop] no truncated names", m.truncated.length === 0, m.truncated.join(","));
@@ -153,27 +158,121 @@ await run(browser, "about", { width: 390, height: 844 }, async page => {
 
 await run(browser, "history", { width: 390, height: 844 }, async page => {
   const rounds = () => page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")).rounds);
-  await setMembers(page, NAMES.slice(0, 7), 1);
-  await swipe(page, -160); await swipe(page, -160); await swipe(page, -160);
-  await swipe(page, 160); await swipe(page, 160);
+  const title = () => page.locator(".card.top .no").textContent();
+  const notice = async () => ((await page.locator(".hint").count()) ? await page.locator(".hint").textContent() : "");
+  const cancelVisible = () => page.locator(".card.top .cancel").isVisible();
+  const players = r => new Set([...r.rest, ...r.matches.flatMap(m => [...m.a, ...m.b])]).size;
+
+  // Yesterday's case: 8 players up to round 3, then 2 more join.
+  await setMembers(page, NAMES.slice(0, 8), 2);
+  expect("[history] first round can't be cancelled", !(await cancelVisible()));
+  await swipe(page, -160); await swipe(page, -160);
   const before = await rounds();
-  expect("[history] viewing a finished round", (await page.locator(".card.top .no").textContent()) === "2試合目");
+  expect("[history] round 3 dealt", (await title()) === "3試合目" && before.length === 3);
 
-  await page.click('#priority button[data-p="variety"]');
-  await page.waitForTimeout(700);
+  await setMembers(page, ["メンバー9", "メンバー10"], 2);
+  await page.screenshot({ path: `${OUT}/history-01-after-joining.png` });
   let after = await rounds();
-  expect("[history] priority change keeps finished rounds",
-    JSON.stringify(after.slice(0, 3)) === JSON.stringify(before.slice(0, 3)) && after.length === 4);
-  expect("[history] and jumps to the round in play", (await page.locator(".card.top .no").textContent()) === "4試合目");
-
-  await swipe(page, 160); await swipe(page, 160);
-  await setMembers(page, ["メンバー8"], 2);
+  expect("[history] joining keeps the card on screen", JSON.stringify(after) === JSON.stringify(before)
+    && (await title()) === "3試合目");
+  expect("[history] notice says it applies next round", (await notice()) === "変更は次の試合から反映されます", await notice());
+  await page.waitForTimeout(3000);
+  await page.screenshot({ path: `${OUT}/history-01b-swipe-hint-follows.png` });
+  expect("[history] swipe hint follows the notice", (await notice()).endsWith("で次の試合")
+    && (await page.locator(".hint .hint-hand").count()) === 1, await notice());
+  await swipe(page, -160);
   after = await rounds();
-  await page.screenshot({ path: `${OUT}/history-01-after-member-change.png` });
-  expect("[history] member change keeps finished rounds",
-    JSON.stringify(after.slice(0, 3)) === JSON.stringify(before.slice(0, 3)) && after[3].matches.length === 2);
+  expect("[history] joiners are in the next round", (await title()) === "4試合目" && players(after[3]) === 10);
+  const joinerIds = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")).members
+    .filter(m => m.name === "メンバー9" || m.name === "メンバー10").map(m => m.id));
+  expect("[history] joiners play rather than rest", joinerIds.length === 2 && !after[3].rest.some(id => joinerIds.includes(id)),
+    JSON.stringify(after[3].rest));
+
+  await page.waitForTimeout(3000);
+  await page.click('#priority button[data-p="variety"]');
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${OUT}/history-02-after-priority.png` });
+  expect("[history] priority change keeps the card on screen",
+    JSON.stringify(await rounds()) === JSON.stringify(after) && (await title()) === "4試合目");
+  expect("[history] priority notice", (await notice()) === "変更は次の試合から反映されます", await notice());
+  await page.mouse.click(195, 700);
+  await page.waitForTimeout(3500);
+  expect("[history] no swipe hint once the notice was touched away", (await notice()) === "", await notice());
+
+  await swipe(page, -160);
+  expect("[history] newest card can be cancelled", (await title()) === "5試合目" && (await cancelVisible()));
+  await page.screenshot({ path: `${OUT}/history-03-cancel-button.png` });
+  page.once("dialog", d => d.dismiss());
+  await page.click(".card.top .cancel");
+  await page.waitForTimeout(500);
+  expect("[history] dismissing the dialog keeps the round", (await rounds()).length === 5 && (await title()) === "5試合目");
+
+  page.once("dialog", d => d.accept());
+  await page.click(".card.top .cancel");
+  await page.waitForTimeout(700);
+  await page.screenshot({ path: `${OUT}/history-04-cancelled.png` });
+  expect("[history] cancel drops the newest round and shows the previous one",
+    JSON.stringify(await rounds()) === JSON.stringify(after) && (await title()) === "4試合目");
+
+  await swipe(page, 160);
+  expect("[history] older cards can't be cancelled", (await title()) === "3試合目" && !(await cancelVisible()));
+  await swipe(page, -160); await swipe(page, -160);
+  expect("[history] a fresh round 5 is dealt after cancelling", (await title()) === "5試合目" && (await rounds()).length === 5);
   expect("[history] no reshuffle button", (await page.locator("#reshuffleBtn").count()) === 0);
 });
+
+await run(browser, "streak", { width: 390, height: 844 }, async page => {
+  await setMembers(page, [...NAMES, "メンバー9", "メンバー10"], 1);
+  for (let i = 0; i < 12; i++) await swipe(page, -160);
+  await page.screenshot({ path: `${OUT}/streak-01-10-on-1-court.png` });
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")));
+  const longest = Math.max(...stored.members.map(m => {
+    let run = 0, best = 0;
+    for (const r of stored.rounds) { run = r.rest.includes(m.id) ? run + 1 : 0; best = Math.max(best, run); }
+    return best;
+  }));
+  expect("[streak] 10 players on 1 court never rest 3 in a row", stored.rounds.length === 13 && longest <= 2,
+    `rounds ${stored.rounds.length}, longest ${longest}`);
+
+  const box = await page.locator(".card.top .rest-list").boundingBox();
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 12; i++) await page.mouse.move(x, y - (160 * i) / 12);
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  const title = await page.locator(".card.top .no").textContent();
+  expect("[streak] a swipe starting on the rest names still advances", title === "14試合目", title);
+});
+
+await run(browser, "touch", { width: 390, height: 844 }, async page => {
+  await setMembers(page, NAMES.slice(0, 6), 1);
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x: 195, y }] });
+  const swipeUp = async () => {
+    await touch("touchStart", 600);
+    for (let i = 1; i <= 8; i++) await touch("touchMove", 600 - i * 25);
+    await touch("touchEnd", 400);
+    await page.waitForTimeout(500);
+  };
+  const tap = async selector => {
+    const b = await page.locator(selector).boundingBox();
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(450);
+  };
+
+  await swipeUp();
+  expect("[touch] a touch swipe advances", (await page.locator(".card.top .no").textContent()) === "2試合目");
+  await tap("#openMembers");
+  expect("[touch] members opens on the first tap after a swipe", (await page.locator("#sheet.open").count()) === 1);
+  await page.touchscreen.tap(5, 5);
+  await page.waitForTimeout(800);
+
+  await swipeUp();
+  await tap('#priority button[data-p="variety"]');
+  expect("[touch] priority switches on the first tap after a swipe",
+    (await page.getAttribute('#priority button[data-p="variety"]', "aria-checked")) === "true");
+}, { hasTouch: true, isMobile: true });
 
 await run(browser, "hint", { width: 390, height: 844 }, async page => {
   const hint = page.locator(".hint");

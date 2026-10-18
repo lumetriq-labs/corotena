@@ -8,6 +8,8 @@ export interface Member {
   archived?: boolean;
   /** Games credited on joining (or returning) mid-session, so they start level with the least-played member. */
   credit?: number;
+  /** Rounds already dealt when they joined (or returned) mid-session. Until they're dealt in, they count as having sat out the last round. */
+  joinedAt?: number;
 }
 
 export type Team = [MemberId, MemberId];

@@ -64,6 +64,21 @@ describe("generateRound", () => {
     }
   });
 
+  it("never rests anyone three rounds in a row when more rest than play, if rest has priority", () => {
+    const longestStreak = (rounds: Round[], n: number) => Math.max(...ids(n).map(p => {
+      let run = 0, best = 0;
+      for (const r of rounds) { run = r.rest.includes(p) ? run + 1 : 0; best = Math.max(best, run); }
+      return best;
+    }));
+    for (const n of [9, 10, 11, 12]) {
+      for (const seed of [1, 2, 3]) {
+        const rounds = run(n, 1, "rest", 20, seed);
+        expect(longestStreak(rounds, n)).toBeLessThanOrEqual(2);
+        expect(playSpread(rounds, n)).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
   it("repeats fewer pairs when variety has priority", () => {
     let rest = 0, variety = 0;
     for (const seed of [1, 2, 3, 4, 5]) {

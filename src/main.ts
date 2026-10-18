@@ -4,7 +4,7 @@ import type { Priority } from "./core/types";
 import { watchForUpdates } from "./freshness";
 import { enableOffline } from "./offline";
 import {
-  activeIds, addMember, credits, gamesPlayed, hasSwiped, load, markSwiped, removeInactive, removeMember, resetAll, resetRounds, roster, save,
+  activeIds, addMember, credits, gamesPlayed, hasSwiped, load, markSwiped, removeInactive, removeMember, resetAll, resetRounds, roster, save, sittingOut,
 } from "./store";
 import { byId } from "./ui/dom";
 import { createMembersSheet } from "./ui/members";
@@ -16,20 +16,28 @@ removeInactive(state);
 function ensureCurrent() {
   if (state.rounds.length > state.index) return;
   const r = generateRound(activeIds(state), state.rounds, {
-    courts: state.courts, priority: state.priority, credit: credits(state),
+    courts: state.courts, priority: state.priority, credit: credits(state), satOut: sittingOut(state),
   });
   if (r) state.rounds.push(r);
 }
 
+const NEXT_ROUND_NOTICE = "変更は次の試合から反映されます";
+
 /**
- * Rebuilds only the round still in play (the newest one) and shows it.
- * Earlier rounds have been played and are never rewritten.
+ * Settings and member changes only shape rounds dealt from now on: a card on screen may already be in play.
+ * Returns true when a card is on screen, i.e. the change is deferred to the next round.
  */
-function regenerateLatest() {
-  const live = Math.max(state.index, state.rounds.length - 1);
-  state.rounds = state.rounds.slice(0, live);
-  state.index = live;
+function applySettings(): boolean {
+  const deferred = !!state.rounds[state.index];
   ensureCurrent();
+  render();
+  return deferred;
+}
+
+function cancelLatest() {
+  if (!confirm("この組み合わせを取り消しますか？")) return;
+  state.rounds.pop();
+  state.index = state.rounds.length - 1;
   render();
 }
 
@@ -55,7 +63,10 @@ const stack = createStack(byId("stack"), {
     render();
   },
   openMembers: () => sheet.open(),
+  cancelLatest,
 });
+
+let noticePending = false;
 
 const sheet = createMembersSheet({
   view: () => ({
@@ -73,9 +84,13 @@ const sheet = createMembersSheet({
     resetAll(state);
     render();
   },
-  changed: regenerateLatest,
-  // Wait for the sheet to slide away so the hint isn't spent behind it.
-  closed: () => setTimeout(() => showHint({ always: true }), 350),
+  changed() { noticePending = applySettings(); },
+  // Wait for the sheet to slide away so the message isn't spent behind it.
+  closed() {
+    const notice = noticePending;
+    noticePending = false;
+    setTimeout(() => (notice ? showNotice() : showHint({ always: true })), 350);
+  },
 });
 
 function render(opts: { enter?: boolean } = {}) {
@@ -94,12 +109,16 @@ function showHint({ always = false } = {}) {
   stack.hint(matchMedia("(pointer: coarse)").matches ? "上にスワイプで次の試合" : "スクロールで次の試合");
 }
 
+function showNotice() {
+  stack.hint(NEXT_ROUND_NOTICE, { hand: false, then: () => showHint({ always: true }) });
+}
+
 byId("priority").addEventListener("click", e => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-p]");
   const p = b?.dataset.p as Priority | undefined;
   if (!p || p === state.priority) return;
   state.priority = p;
-  regenerateLatest();
+  if (applySettings()) showNotice();
 });
 byId("openMembers").addEventListener("click", () => sheet.open());
 
