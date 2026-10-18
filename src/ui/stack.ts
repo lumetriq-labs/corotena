@@ -15,8 +15,6 @@ export interface StackHandlers {
   commit: (dir: Direction) => boolean;
   jumpTo: (index: number) => void;
   openMembers: () => void;
-  /** Cancels the newest round. Only offered on the newest card when it's on top and isn't the first round. */
-  cancelLatest: () => void;
 }
 
 const PAST_VISIBLE = 3;
@@ -61,7 +59,7 @@ function courtEl(m: Match, view: StackView, pastPairs: Map<string, number>): HTM
       player(m.b[0], m.b[1], "p-b1", "b"), player(m.b[1], m.b[0], "p-b2", "b")));
 }
 
-function fillCard(el: HTMLElement, view: StackView, i: number, onCancel: () => void) {
+function fillCard(el: HTMLElement, view: StackView, i: number) {
   const round = view.rounds[i]!;
   const history = view.rounds.slice(0, i);
   const prevRest = new Set(history[history.length - 1]?.rest ?? []);
@@ -73,11 +71,6 @@ function fillCard(el: HTMLElement, view: StackView, i: number, onCancel: () => v
     requestAnimationFrame(fade);
     strip.append(h("div", "rest", "🪑", list));
   }
-  const cancel = h("button", "cancel", "✕") as HTMLButtonElement;
-  cancel.type = "button";
-  cancel.setAttribute("aria-label", `${i + 1}試合目の組み合わせを取り消す`);
-  cancel.addEventListener("click", () => { if (el.classList.contains("cancellable")) onCancel(); });
-  strip.append(cancel);
   const pastPairs = tally(history).pair;
   el.replaceChildren(strip, h("div", "courts", ...round.matches.map(m => courtEl(m, view, pastPairs))));
 }
@@ -112,7 +105,6 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
     let startY = 0, dy = 0, active = false;
     el.addEventListener("pointerdown", e => {
       if (animating || e.button !== 0) return;
-      if ((e.target as HTMLElement).closest(".cancel") && el.classList.contains("cancellable")) return;
       if (!el.classList.contains("top")) {
         if (i < view.index) { lockAnimation(); handlers.jumpTo(i); }
         return;
@@ -207,17 +199,16 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
         stack.append(el);
         card = { el, round: view.rounds[i]! };
         cards.set(i, card);
-        fillCard(el, view, i, handlers.cancelLatest);
+        fillCard(el, view, i);
       } else if (card.round !== view.rounds[i]) {
         card.round = view.rounds[i]!;
-        fillCard(card.el, view, i, handlers.cancelLatest);
+        fillCard(card.el, view, i);
         card.el.classList.remove("swap");
         void card.el.offsetWidth;
         card.el.classList.add("swap");
       }
       const { el } = card;
       el.classList.toggle("top", depth === 0);
-      el.classList.toggle("cancellable", depth === 0 && i > 0 && i === view.rounds.length - 1);
       el.style.zIndex = String(100 + i);
       if (isNew) {
         el.classList.add("dragging");
