@@ -6,8 +6,6 @@ export interface MembersView {
   games: ReadonlyMap<MemberId, number>;
   courts: number;
   hasRounds: boolean;
-  /** Number of the newest round when it can be cancelled (not the first round), otherwise null. */
-  cancellable: number | null;
 }
 
 export interface MembersHandlers {
@@ -16,8 +14,6 @@ export interface MembersHandlers {
   add: (name: string) => boolean;
   setCourts: (n: number) => void;
   reset: () => void;
-  /** Drops the newest round. The confirmation has already been given. */
-  cancelLatest: () => void;
   clearAll: () => void;
   /** Called on close only if something changed while the sheet was open. */
   changed: () => void;
@@ -28,7 +24,7 @@ export interface MembersHandlers {
 export function createMembersSheet(handlers: MembersHandlers) {
   const sheet = byId("sheet"), bg = byId("sheetBg"), chips = byId("chips");
   const input = byId<HTMLInputElement>("addInput"), resetBtn = byId<HTMLButtonElement>("resetBtn");
-  const clearBtn = byId<HTMLButtonElement>("clearBtn"), undoBtn = byId<HTMLButtonElement>("undoBtn");
+  const clearBtn = byId<HTMLButtonElement>("clearBtn");
   let dirty = false;
 
   function render() {
@@ -46,8 +42,6 @@ export function createMembersSheet(handlers: MembersHandlers) {
       b.classList.toggle("on", Number(b.dataset.v) === v.courts);
     }
     resetBtn.hidden = !v.hasRounds;
-    undoBtn.hidden = v.cancellable === null;
-    undoBtn.textContent = `↶ ${v.cancellable ?? ""}試合目を取り消す`;
     clearBtn.hidden = !v.hasRounds && v.members.length === 0;
   }
 
@@ -88,14 +82,6 @@ export function createMembersSheet(handlers: MembersHandlers) {
   byId("courtSeg").addEventListener("click", e => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-v]");
     if (b) mutate(() => handlers.setCourts(Number(b.dataset.v)));
-  });
-
-  // Closes the sheet so the card the stack falls back to is in view.
-  undoBtn.addEventListener("click", () => {
-    const n = handlers.view().cancellable;
-    if (n === null || !confirm(`${n}試合目の組み合わせを取り消しますか？`)) return;
-    handlers.cancelLatest();
-    close();
   });
 
   resetBtn.addEventListener("click", () => {

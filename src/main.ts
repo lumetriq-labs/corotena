@@ -35,6 +35,7 @@ function applySettings(): boolean {
 }
 
 function cancelLatest() {
+  if (!confirm("この組み合わせを取り消しますか？")) return;
   state.rounds.pop();
   state.index = state.rounds.length - 1;
   render();
@@ -62,6 +63,7 @@ const stack = createStack(byId("stack"), {
     render();
   },
   openMembers: () => sheet.open(),
+  cancelLatest,
 });
 
 let noticePending = false;
@@ -69,9 +71,7 @@ let noticePending = false;
 const sheet = createMembersSheet({
   view: () => ({
     members: roster(state), games: gamesPlayed(state), courts: state.courts, hasRounds: state.rounds.length > 0,
-    cancellable: state.rounds.length > 1 ? state.rounds.length : null,
   }),
-  cancelLatest,
   remove: id => removeMember(state, id),
   add: name => addMember(state, name),
   setCourts(n) { state.courts = n; },

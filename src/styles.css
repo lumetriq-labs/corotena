@@ -4,6 +4,7 @@
   --team-a: #ff7a45;
   --team-b: #ffd23f;
   --warn: #ff9f0a;
+  --danger: #ff3b30;
   --strip: 52px;
   --radius: 26px;
 }
@@ -88,6 +89,14 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .strip .rest-list.more { mask-image: linear-gradient(to right, #000 80%, transparent); -webkit-mask-image: linear-gradient(to right, #000 80%, transparent); }
 .strip .rest-list span { flex: none; background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
 .strip .rest-list span.warn { background: var(--warn); color: #1c1c1e; }
+/* Always laid out and only recolored: showing and hiding it as cards move made iOS drop the next tap elsewhere. */
+.strip .cancel { display: grid; flex: none; margin-left: auto; width: 30px; height: 30px; border-radius: 50%; place-items: center;
+  border: 1px solid rgba(255,255,255,.7); background: rgba(255,255,255,.4); color: rgba(16, 32, 26, .25);
+  font-size: 13px; font-weight: 900; }
+.strip .rest ~ .cancel { margin-left: 0; }
+.card.cancellable .cancel { border-color: rgba(255,255,255,.8); background: var(--danger); color: #fff;
+  box-shadow: 0 2px 8px rgba(255, 59, 48, .35); cursor: pointer; }
+
 .courts { flex: 1; min-height: 0; display: flex; flex-wrap: wrap; gap: var(--gap); justify-content: center; align-content: flex-start;
   padding: 0 var(--pad) var(--bottom); transition: opacity .3s; }
 /* Older cards show only their strip; their courts would otherwise ghost through the translucent cards in front */
@@ -180,7 +189,7 @@ button.glass:active { scale: .96; }
 .seg { display: flex; background: rgba(0,0,0,.06); border-radius: 14px; padding: 3px; gap: 3px; }
 .seg button { border: none; background: transparent; padding: 0 12px; border-radius: 11px; font-weight: 800; font-size: 14px; cursor: pointer; color: var(--muted); }
 .seg button.on { background: rgba(255,255,255,.85); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
-.sheet-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 8px; margin-top: 14px; }
+.sheet-actions { display: flex; justify-content: center; gap: 8px; margin-top: 14px; }
 .reset.danger { color: #c62a20; }
 .reset { display: block; border: none; background: none; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; padding: 6px 10px; }
 .reset[hidden] { display: none; }

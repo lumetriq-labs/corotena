@@ -160,17 +160,12 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
   const rounds = () => page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")).rounds);
   const title = () => page.locator(".card.top .no").textContent();
   const notice = async () => ((await page.locator(".hint").count()) ? await page.locator(".hint").textContent() : "");
+  const cancelVisible = () => page.locator(".card.top.cancellable .cancel").isVisible();
   const players = r => new Set([...r.rest, ...r.matches.flatMap(m => [...m.a, ...m.b])]).size;
-  const openSheet = async () => { await page.click("#openMembers"); await page.waitForTimeout(400); };
-  const closeSheet = async () => { await page.mouse.click(5, 5); await page.waitForTimeout(700); };
-  const undoLabel = async () => ((await page.locator("#undoBtn").isVisible()) ? await page.locator("#undoBtn").textContent() : null);
 
   // Yesterday's case: 8 players up to round 3, then 2 more join.
   await setMembers(page, NAMES.slice(0, 8), 2);
-  await openSheet();
-  expect("[history] first round can't be cancelled", (await undoLabel()) === null);
-  await closeSheet();
-  await page.waitForTimeout(3000);
+  expect("[history] first round can't be cancelled", !(await cancelVisible()));
   await swipe(page, -160); await swipe(page, -160);
   const before = await rounds();
   expect("[history] round 3 dealt", (await title()) === "3試合目" && before.length === 3);
@@ -205,28 +200,30 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
   expect("[history] no swipe hint once the notice was touched away", (await notice()) === "", await notice());
 
   await swipe(page, -160);
-  expect("[history] cards hold no buttons", (await page.locator(".card button").count()) === 0);
-  await openSheet();
-  await page.screenshot({ path: `${OUT}/history-03-undo-in-sheet.png` });
-  expect("[history] the sheet offers to cancel the newest round", (await undoLabel()) === "↶ 5試合目を取り消す", await undoLabel());
+  expect("[history] newest card can be cancelled", (await title()) === "5試合目" && (await cancelVisible()));
+  await page.screenshot({ path: `${OUT}/history-03-cancel-button.png` });
   page.once("dialog", d => d.dismiss());
-  await page.click("#undoBtn");
-  await page.waitForTimeout(400);
-  expect("[history] dismissing the dialog keeps the round", (await rounds()).length === 5
-    && (await page.locator("#sheet.open").count()) === 1);
+  await page.click(".card.top .cancel");
+  await page.waitForTimeout(500);
+  expect("[history] dismissing the dialog keeps the round", (await rounds()).length === 5 && (await title()) === "5試合目");
 
   page.once("dialog", d => d.accept());
-  await page.click("#undoBtn");
-  await page.waitForTimeout(800);
+  await page.click(".card.top .cancel");
+  await page.waitForTimeout(700);
   await page.screenshot({ path: `${OUT}/history-04-cancelled.png` });
-  expect("[history] cancel drops the newest round, closes the sheet and shows the previous one",
-    JSON.stringify(await rounds()) === JSON.stringify(after) && (await title()) === "4試合目"
-    && (await page.locator("#sheet.open").count()) === 0);
+  expect("[history] cancel drops the newest round and shows the previous one",
+    JSON.stringify(await rounds()) === JSON.stringify(after) && (await title()) === "4試合目");
 
   await swipe(page, 160);
-  await openSheet();
-  expect("[history] the sheet always names the newest round", (await undoLabel()) === "↶ 4試合目を取り消す", await undoLabel());
-  await closeSheet();
+  expect("[history] older cards can't be cancelled", (await title()) === "3試合目" && !(await cancelVisible()));
+  const dialogs = [];
+  page.on("dialog", d => { dialogs.push(d.message()); d.dismiss(); });
+  await page.click(".card.top .cancel");
+  await page.waitForTimeout(400);
+  expect("[history] tapping a greyed-out ✕ does nothing", dialogs.length === 0 && (await rounds()).length === 4
+    && (await title()) === "3試合目", dialogs.join(","));
+  const xs = await page.evaluate(() => [...document.querySelectorAll(".card .cancel")].map(b => getComputedStyle(b).display));
+  expect("[history] every card keeps its ✕ laid out", xs.length > 1 && xs.every(d => d === "grid"), xs.join(","));
   await swipe(page, -160); await swipe(page, -160);
   expect("[history] a fresh round 5 is dealt after cancelling", (await title()) === "5試合目" && (await rounds()).length === 5);
   expect("[history] no reshuffle button", (await page.locator("#reshuffleBtn").count()) === 0);
