@@ -1,6 +1,7 @@
 import "./styles.css";
 import { generateRound } from "./core/scheduler";
 import type { Priority } from "./core/types";
+import { enableDebug } from "./debug";
 import { watchForUpdates } from "./freshness";
 import { enableOffline } from "./offline";
 import {
@@ -133,3 +134,4 @@ render();
 showHint();
 watchForUpdates();
 enableOffline();
+enableDebug();

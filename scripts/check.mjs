@@ -284,6 +284,16 @@ await run(browser, "touch", { width: 390, height: 844 }, async page => {
   await tap('#priority button[data-p="variety"]');
   expect("[touch] priority switches on the first tap after a swipe",
     (await page.getAttribute('#priority button[data-p="variety"]', "aria-checked")) === "true");
+
+  expect("[touch] no debug log without ?debug", (await page.locator("#debugLog").count()) === 0);
+  await page.goto(`${URL}?debug=1`);
+  await page.waitForTimeout(500);
+  await swipeUp();
+  await tap("#openMembers");
+  const log = await page.locator("#debugLog").textContent();
+  expect("[touch] ?debug=1 logs touches and clicks", log.includes("touchstart") && log.includes("click button#openMembers"), log.slice(-300));
+  expect("[touch] the members sheet still opens with the log on", (await page.locator("#sheet.open").count()) === 1);
+  await page.screenshot({ path: `${OUT}/touch-debug.png` });
 }, { hasTouch: true, isMobile: true });
 
 await run(browser, "hint", { width: 390, height: 844 }, async page => {
