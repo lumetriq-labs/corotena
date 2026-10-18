@@ -65,7 +65,13 @@ function createEvaluator(
 ) {
   const t = tally(history);
   const last = history[history.length - 1];
-  const lastRest = new Set([...(last?.rest ?? []), ...(satOut ?? [])]);
+  // Rounds each player has rested in a row up to now. Players who weren't there count as having rested once.
+  const streak = new Map(players.map(p => {
+    if (satOut?.has(p)) return [p, 1];
+    let n = 0;
+    for (let i = history.length - 1; i >= 0 && history[i]!.rest.includes(p); i--) n++;
+    return [p, n];
+  }));
   const lastPairs = new Set(last?.matches.flatMap(m => [pairKey(...m.a), pairKey(...m.b)]) ?? []);
   const basePlay = new Map(players.map(p => [p, (t.play.get(p) ?? 0) + (credit?.get(p) ?? 0)]));
 
@@ -75,7 +81,9 @@ function createEvaluator(
     for (let i = 0; i < order.length; i++) {
       const p = order[i]!;
       const resting = i < restN;
-      if (resting && lastRest.has(p)) consecutive++;
+      // Under the rest priority, squared so a third rest in a row costs more than two people each resting twice.
+      // Not under variety: keeping streaks short means rotating the same groups, which repeats pairs.
+      if (resting) consecutive += priority === "rest" ? streak.get(p)! ** 2 : Math.min(streak.get(p)!, 1);
       const games = basePlay.get(p)! + (resting ? 0 : 1);
       if (games > maxPlay) maxPlay = games;
       if (games < minPlay) minPlay = games;

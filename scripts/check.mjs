@@ -221,6 +221,42 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
   expect("[history] no reshuffle button", (await page.locator("#reshuffleBtn").count()) === 0);
 });
 
+await run(browser, "streak", { width: 390, height: 844 }, async page => {
+  await setMembers(page, [...NAMES, "メンバー9", "メンバー10"], 1);
+  for (let i = 0; i < 12; i++) await swipe(page, -160);
+  await page.screenshot({ path: `${OUT}/streak-01-10-on-1-court.png` });
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("pairloom:v1")));
+  const longest = Math.max(...stored.members.map(m => {
+    let run = 0, best = 0;
+    for (const r of stored.rounds) { run = r.rest.includes(m.id) ? run + 1 : 0; best = Math.max(best, run); }
+    return best;
+  }));
+  expect("[streak] 10 players on 1 court never rest 3 in a row", stored.rounds.length === 13 && longest <= 2,
+    `rounds ${stored.rounds.length}, longest ${longest}`);
+
+  const list = page.locator(".card.top .rest-list");
+  const before = await list.evaluate(el => ({ overflows: el.scrollWidth > el.clientWidth, faded: el.classList.contains("more") }));
+  expect("[streak] six resting names overflow and fade at the edge", before.overflows && before.faded, JSON.stringify(before));
+  await list.evaluate(el => { el.scrollLeft = el.scrollWidth; });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: `${OUT}/streak-02-rest-scrolled.png` });
+  const end = await list.evaluate(el => ({
+    faded: el.classList.contains("more"),
+    lastVisible: el.lastElementChild.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1,
+  }));
+  expect("[streak] scrolling reveals the last name and drops the fade", end.lastVisible && !end.faded, JSON.stringify(end));
+
+  const box = await list.boundingBox();
+  const x = box.x + box.width / 2, y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 12; i++) await page.mouse.move(x, y - (160 * i) / 12);
+  await page.mouse.up();
+  await page.waitForTimeout(700);
+  const title = await page.locator(".card.top .no").textContent();
+  expect("[streak] a swipe starting on the rest names still advances", title === "14試合目", title);
+});
+
 await run(browser, "hint", { width: 390, height: 844 }, async page => {
   const hint = page.locator(".hint");
   await setMembers(page, NAMES.slice(0, 5), 1);

@@ -67,7 +67,11 @@ function fillCard(el: HTMLElement, view: StackView, i: number) {
   const prevRest = new Set(history[history.length - 1]?.rest ?? []);
   const strip = h("div", "strip", h("div", "no", String(i + 1), h("small", "", "試合目")));
   if (round.rest.length) {
-    strip.append(h("div", "rest", "🪑", ...round.rest.map(p => h("span", prevRest.has(p) ? "warn" : "", view.name(p)))));
+    const list = h("div", "rest-list", ...round.rest.map(p => h("span", prevRest.has(p) ? "warn" : "", view.name(p))));
+    const fade = () => list.classList.toggle("more", list.scrollLeft + list.clientWidth < list.scrollWidth - 1);
+    list.addEventListener("scroll", fade, { passive: true });
+    requestAnimationFrame(fade);
+    strip.append(h("div", "rest", "🪑", list));
   }
   const cancel = h("button", "cancel", "✕") as HTMLButtonElement;
   cancel.type = "button";
