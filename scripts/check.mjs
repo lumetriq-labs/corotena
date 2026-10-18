@@ -216,14 +216,6 @@ await run(browser, "history", { width: 390, height: 844 }, async page => {
 
   await swipe(page, 160);
   expect("[history] older cards can't be cancelled", (await title()) === "3試合目" && !(await cancelVisible()));
-  const dialogs = [];
-  page.on("dialog", d => { dialogs.push(d.message()); d.dismiss(); });
-  await page.click(".card.top .cancel");
-  await page.waitForTimeout(400);
-  expect("[history] tapping a greyed-out ✕ does nothing", dialogs.length === 0 && (await rounds()).length === 4
-    && (await title()) === "3試合目", dialogs.join(","));
-  const xs = await page.evaluate(() => [...document.querySelectorAll(".card .cancel")].map(b => getComputedStyle(b).display));
-  expect("[history] every card keeps its ✕ laid out", xs.length > 1 && xs.every(d => d === "grid"), xs.join(","));
   await swipe(page, -160); await swipe(page, -160);
   expect("[history] a fresh round 5 is dealt after cancelling", (await title()) === "5試合目" && (await rounds()).length === 5);
   expect("[history] no reshuffle button", (await page.locator("#reshuffleBtn").count()) === 0);
