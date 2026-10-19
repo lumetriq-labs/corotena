@@ -243,10 +243,16 @@ export function createStack(stack: HTMLElement, handlers: StackHandlers) {
    * Briefly shows a message; disappears on the first touch or after a few seconds. Replaces one already showing.
    * `then` runs only if it ran its full time, so a follow-up never interrupts someone already using the cards.
    */
-  function hint(text: string, { hand = true, then }: { hand?: boolean; then?: () => void } = {}) {
+  function hint(text: string, { hand = true, center = false, then }: { hand?: boolean; center?: boolean; then?: () => void } = {}) {
     stack.querySelector(".hint")?.remove();
     const el = hand ? h("div", "hint glass", h("span", "hint-hand", "👆"), text) : h("div", "hint glass", text);
     el.setAttribute("role", "status");
+    const card = center ? stack.querySelector<HTMLElement>(".card.top") : null;
+    if (card) {
+      el.classList.add("center");
+      const r = card.getBoundingClientRect();
+      el.style.top = `${(r.top + r.bottom) / 2 - stack.getBoundingClientRect().top}px`;
+    }
     stack.append(el);
     const dismiss = (timedOut: boolean) => {
       clearTimeout(timer);

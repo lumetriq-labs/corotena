@@ -111,7 +111,7 @@ function showHint({ always = false } = {}) {
 }
 
 function showNotice() {
-  stack.hint(NEXT_ROUND_NOTICE, { hand: false, then: () => showHint({ always: true }) });
+  stack.hint(NEXT_ROUND_NOTICE, { hand: false, center: true, then: () => showHint({ always: true }) });
 }
 
 byId("priority").addEventListener("click", e => {
