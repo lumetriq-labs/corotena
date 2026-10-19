@@ -40,6 +40,8 @@ function takeTap(): Tap {
   }
 }
 
+let firstFrame: number | undefined;
+
 function navigationReport(tap: Tap): string[] {
   const nav = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
   const start = performance.timeOrigin;
@@ -51,7 +53,7 @@ function navigationReport(tap: Tap): string[] {
   }
   if (nav) {
     lines.push(`navStart→ worker ${ms(nav.workerStart)} fetch ${ms(nav.fetchStart)} resStart ${ms(nav.responseStart)} resEnd ${ms(nav.responseEnd)}`);
-    lines.push(`navStart→ domInteractive ${ms(nav.domInteractive)} dcl ${ms(nav.domContentLoadedEventEnd)} fcp ${ms(fcp)}`);
+    lines.push(`navStart→ domInteractive ${ms(nav.domInteractive)} dcl ${ms(nav.domContentLoadedEventEnd)} load ${ms(nav.loadEventEnd || undefined)} frame ${ms(firstFrame)} fcp ${ms(fcp)}`);
   }
   return lines;
 }
@@ -107,9 +109,13 @@ export function enableDebug() {
   };
   panel.textContent = report.join("\n");
   // Paint and load timings land after this script runs.
-  addEventListener("load", () => setTimeout(() => {
+  const refresh = () => {
     report.splice(0, report.length, ...navigationReport(tap));
     panel.textContent = [...report, ...lines].join("\n");
-  }, 0));
+  };
+  // The second frame callback runs once the first frame has been put on screen.
+  requestAnimationFrame(() => requestAnimationFrame(() => { firstFrame = performance.now(); refresh(); }));
+  addEventListener("load", () => setTimeout(refresh, 0));
+  setTimeout(refresh, 5000);
   for (const type of TYPES) window.addEventListener(type, log, { capture: true, passive: true });
 }
