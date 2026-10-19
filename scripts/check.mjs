@@ -298,6 +298,15 @@ await run(browser, "touch", { width: 390, height: 844 }, async page => {
   expect("[touch] ?debug=1 logs touches and clicks", log.includes("touchstart") && log.includes("click button#openMembers"), log.slice(-300));
   expect("[touch] the members sheet still opens with the log on", (await page.locator("#sheet.open").count()) === 1);
   await page.screenshot({ path: `${OUT}/touch-debug.png` });
+
+  await page.goto(URL);
+  await page.waitForTimeout(300);
+  await Promise.all([page.waitForURL(/about\.html/, { waitUntil: "load" }), tap(".help-btn")]);
+  await page.waitForTimeout(300);
+  const timings = (await page.locator("#debugLog").textContent()) ?? "";
+  expect("[touch] debug follows the link and times the tap", timings.includes("tap from") && timings.includes("navStart→"), timings.slice(0, 300));
+  await page.goto(`${URL}?debug=0`);
+  expect("[touch] ?debug=0 turns it off", (await page.locator("#debugLog").count()) === 0);
 }, { hasTouch: true, isMobile: true });
 
 await run(browser, "hint", { width: 390, height: 844 }, async page => {

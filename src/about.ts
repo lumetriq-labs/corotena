@@ -1,5 +1,6 @@
 import "./styles.css";
 import "./about.css";
+import { enableDebug } from "./debug";
 import { watchForUpdates } from "./freshness";
 import { enableOffline } from "./offline";
 import { isStandalone } from "./platform";
@@ -9,3 +10,4 @@ if (isStandalone()) byId("installLink").hidden = true;
 
 watchForUpdates();
 enableOffline();
+enableDebug();

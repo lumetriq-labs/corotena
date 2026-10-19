@@ -1,5 +1,6 @@
 import "./styles.css";
 import "./about.css";
+import { enableDebug } from "./debug";
 import { watchForUpdates } from "./freshness";
 import { enableOffline } from "./offline";
 import { isIOS, isStandalone } from "./platform";
@@ -45,3 +46,4 @@ addEventListener("appinstalled", () => {
 
 watchForUpdates();
 enableOffline();
+enableDebug();
