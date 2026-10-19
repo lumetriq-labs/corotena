@@ -55,6 +55,10 @@ function navigationReport(tap: Tap): string[] {
     lines.push(`navStart→ worker ${ms(nav.workerStart)} fetch ${ms(nav.fetchStart)} resStart ${ms(nav.responseStart)} resEnd ${ms(nav.responseEnd)}`);
     lines.push(`navStart→ domInteractive ${ms(nav.domInteractive)} dcl ${ms(nav.domContentLoadedEventEnd)} load ${ms(nav.loadEventEnd || undefined)} frame ${ms(firstFrame)} fcp ${ms(fcp)}`);
   }
+  // Each file the page pulled in: start → served by the worker → done.
+  for (const r of performance.getEntriesByType("resource") as PerformanceResourceTiming[]) {
+    lines.push(`  ${r.name.split("/").pop()?.slice(0, 28)} ${ms(r.startTime)}→${ms(r.workerStart || undefined)}→${ms(r.responseEnd)}`);
+  }
   return lines;
 }
 
