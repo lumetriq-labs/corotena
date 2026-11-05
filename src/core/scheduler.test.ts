@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { countArrangements, generateRound, mulberry32, pairKey, tally } from "./scheduler";
 import type { Priority, Round } from "./types";
@@ -21,6 +22,12 @@ const consecutiveRests = (rounds: Round[]) =>
 
 const pairRepeats = (rounds: Round[]) =>
   [...tally(rounds).pair.values()].reduce((n, c) => n + c - 1, 0);
+
+const longestStreak = (rounds: Round[], n: number) => Math.max(...ids(n).map(p => {
+  let run = 0, best = 0;
+  for (const r of rounds) { run = r.rest.includes(p) ? run + 1 : 0; best = Math.max(best, run); }
+  return best;
+}));
 
 const playSpread = (rounds: Round[], n: number) => {
   const play = tally(rounds).play;
@@ -65,11 +72,6 @@ describe("generateRound", () => {
   });
 
   it("never rests anyone three rounds in a row when more rest than play, if rest has priority", () => {
-    const longestStreak = (rounds: Round[], n: number) => Math.max(...ids(n).map(p => {
-      let run = 0, best = 0;
-      for (const r of rounds) { run = r.rest.includes(p) ? run + 1 : 0; best = Math.max(best, run); }
-      return best;
-    }));
     for (const n of [9, 10, 11, 12]) {
       for (const seed of [1, 2, 3]) {
         const rounds = run(n, 1, "rest", 20, seed);
@@ -122,6 +124,46 @@ describe("generateRound", () => {
     const othersAvg = players.reduce((s, p) => s + (play.get(p) ?? 0), 0) / players.length;
     expect(latePlays).toBeLessThan(after.length);
     expect(Math.abs(latePlays - othersAvg)).toBeLessThanOrEqual(1);
+  });
+
+  it("never rests anyone three rounds in a row under balance", () => {
+    for (const [n, c] of [[5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1], [9, 2], [10, 2], [11, 2], [12, 2], [13, 2], [14, 2]] as const) {
+      for (const seed of [1, 2, 3]) {
+        const rounds = run(n, c, "balance", 30, seed);
+        expect(longestStreak(rounds, n)).toBeLessThanOrEqual(2);
+        expect(playSpread(rounds, n)).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("forms every pair with eight players on one court under balance, unlike rest", () => {
+    const pairs = (rounds: Round[]) => tally(rounds).pair.size;
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      expect(pairs(run(8, 1, "balance", 30, seed))).toBe(28);
+      expect(pairs(run(8, 1, "rest", 30, seed))).toBeLessThan(28);
+    }
+  });
+
+  it("sits between rest and variety on consecutive rests", () => {
+    let rest = 0, balance = 0, variety = 0;
+    for (const seed of [1, 2, 3, 4, 5]) {
+      rest += consecutiveRests(run(8, 1, "rest", 30, seed));
+      balance += consecutiveRests(run(8, 1, "balance", 30, seed));
+      variety += consecutiveRests(run(8, 1, "variety", 30, seed));
+    }
+    expect(rest).toBeLessThan(balance);
+    expect(balance).toBeLessThan(variety);
+  });
+
+  it("keeps rest and variety rounds unchanged", () => {
+    const out: Record<string, Round[]> = {};
+    for (const [n, c] of [[4, 1], [5, 1], [6, 1], [7, 1], [8, 1], [9, 2], [10, 2], [12, 2], [13, 3], [16, 2]] as const) {
+      for (const priority of ["rest", "variety"] as const) {
+        for (const seed of [1, 2, 3]) out[`${n}-${c}-${priority}-${seed}`] = run(n, c, priority, 20, seed);
+      }
+    }
+    const hash = createHash("sha256").update(JSON.stringify(out)).digest("hex");
+    expect(hash).toBe("6ff34487ef609d7377a042199964838ee1aae6d847434785031f6b397c0bdee9");
   });
 
   it("is deterministic for a given seed", () => {

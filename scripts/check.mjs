@@ -346,6 +346,23 @@ await run(browser, "hint", { width: 390, height: 844 }, async page => {
   expect("[hint] still shows after closing the members sheet", (await hint.count()) === 1);
 }, { hasTouch: true, isMobile: true });
 
+await run(browser, "priority", { width: 320, height: 640 }, async (page, shot) => {
+  await setMembers(page, NAMES.slice(0, 7), 1);
+  await page.click('#priority button[data-p="balance"]');
+  await page.waitForTimeout(500);
+  await shot("01-balance");
+  const fits = await page.evaluate(() => [...document.querySelectorAll("#priority button")].every(b => {
+    const r = b.getBoundingClientRect();
+    return r.left >= 0 && r.right <= innerWidth && b.scrollWidth <= b.clientWidth;
+  }));
+  expect("[priority] three buttons fit on a 320px screen", fits);
+  await page.reload();
+  await page.waitForTimeout(500);
+  expect("[priority] balance stays selected after reload",
+    (await page.getAttribute('#priority button[data-p="balance"]', "aria-checked")) === "true"
+    && (await page.evaluate(() => JSON.parse(localStorage.getItem("corotena:v1")).priority)) === "balance");
+});
+
 await run(browser, "reset", { width: 390, height: 844 }, async page => {
   await setMembers(page, NAMES.slice(0, 5), 2);
   await swipe(page, -160);

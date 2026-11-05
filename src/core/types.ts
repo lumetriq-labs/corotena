@@ -25,6 +25,6 @@ export interface Round {
 }
 
 /** Which rule wins when both can't be satisfied. Both are always applied best-effort. */
-export type Priority = "rest" | "variety";
+export type Priority = "rest" | "balance" | "variety";
 
 export const MAX_COURTS = 4;

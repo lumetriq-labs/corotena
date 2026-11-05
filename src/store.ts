@@ -56,7 +56,7 @@ export function parseState(raw: unknown): State | null {
   const rounds = raw.rounds.map(r => parseRound(r, ids));
   if (rounds.some(r => !r)) return null;
   const courts = typeof raw.courts === "number" ? Math.min(MAX_COURTS, Math.max(1, Math.round(raw.courts))) : 1;
-  const priority: Priority = raw.priority === "variety" ? "variety" : "rest";
+  const priority: Priority = raw.priority === "variety" || raw.priority === "balance" ? raw.priority : "rest";
   const index = typeof raw.index === "number" ? Math.min(rounds.length, Math.max(0, Math.floor(raw.index))) : rounds.length;
   return { version: 1, members: members as Member[], courts, priority, rounds: rounds as Round[], index };
 }

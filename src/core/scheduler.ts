@@ -76,14 +76,19 @@ function createEvaluator(
   const basePlay = new Map(players.map(p => [p, (t.play.get(p) ?? 0) + (credit?.get(p) ?? 0)]));
 
   return (order: Arrangement): Score => {
-    let consecutive = 0;
+    let consecutive = 0, second = 0, third = 0;
     let maxPlay = -Infinity, minPlay = Infinity;
     for (let i = 0; i < order.length; i++) {
       const p = order[i]!;
       const resting = i < restN;
-      // Under the rest priority, squared so a third rest in a row costs more than two people each resting twice.
-      // Not under variety: keeping streaks short means rotating the same groups, which repeats pairs.
-      if (resting) consecutive += priority === "rest" ? streak.get(p)! ** 2 : Math.min(streak.get(p)!, 1);
+      if (resting) {
+        const s = streak.get(p)!;
+        // Under the rest priority, squared so a third rest in a row costs more than two people each resting twice.
+        // Not under variety: keeping streaks short means rotating the same groups, which repeats pairs.
+        consecutive += priority === "rest" ? s ** 2 : Math.min(s, 1);
+        if (s === 1) second++;
+        else if (s >= 2) third++;
+      }
       const games = basePlay.get(p)! + (resting ? 0 : 1);
       if (games > maxPlay) maxPlay = games;
       if (games < minPlay) minPlay = games;
@@ -91,18 +96,22 @@ function createEvaluator(
     // Keep everyone's game count within one of each other (the fairness baseline).
     const spread = Math.max(0, maxPlay - minPlay - 1);
 
-    let pairRepeat = 0, lastPair = 0, oppRepeat = 0;
+    let pairRepeat = 0, lastPair = 0, oppRepeat = 0, novel = 0;
     for (let c = 0; c < courts; c++) {
       const o = restN + c * 4;
       const a0 = order[o]!, a1 = order[o + 1]!, b0 = order[o + 2]!, b1 = order[o + 3]!;
       for (const k of [pairKey(a0, a1), pairKey(b0, b1)]) {
         const n = t.pair.get(k) ?? 0;
         pairRepeat += n * n;
+        if (n === 0) novel++;
         if (lastPairs.has(k)) lastPair++;
       }
       for (const x of [a0, a1]) for (const y of [b0, b1]) oppRepeat += t.opp.get(pairKey(x, y)) ?? 0;
     }
 
+    // Balance avoids a third rest in a row first, but trades a second one against pair repeats,
+    // so that halves of the roster don't keep swapping in and out together.
+    if (priority === "balance") return [spread, third, lastPair, second * 3 + pairRepeat - novel, oppRepeat];
     return priority === "rest"
       ? [spread, consecutive, lastPair, pairRepeat, oppRepeat]
       : [spread, lastPair, pairRepeat, consecutive, oppRepeat];
