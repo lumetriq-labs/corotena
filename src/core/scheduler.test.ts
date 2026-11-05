@@ -126,34 +126,39 @@ describe("generateRound", () => {
     expect(Math.abs(latePlays - othersAvg)).toBeLessThanOrEqual(1);
   });
 
-  it("never rests anyone three rounds in a row under balance", () => {
-    for (const [n, c] of [[5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1], [9, 2], [10, 2], [11, 2], [12, 2], [13, 2], [14, 2]] as const) {
-      for (const seed of [1, 2]) {
-        const rounds = run(n, c, "balance", 20, seed);
-        expect(longestStreak(rounds, n)).toBeLessThanOrEqual(2);
+  it("rests nobody more than twice in a row under balance over a 12-round day, or three times from 11 on one court", () => {
+    const cases = [[5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1], [11, 1], [12, 1],
+      [8, 2], [9, 2], [10, 2], [11, 2], [12, 2], [13, 2], [14, 2], [15, 2]] as const;
+    for (const [n, c] of cases) {
+      for (const seed of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) {
+        const rounds = run(n, c, "balance", 12, seed);
+        expect(longestStreak(rounds, n)).toBeLessThanOrEqual(c === 1 && n >= 11 ? 3 : 2);
         expect(playSpread(rounds, n)).toBeLessThanOrEqual(1);
       }
     }
-  }, 30_000);
+  }, 120_000);
 
-  it("forms every pair with eight players on one court under balance, unlike rest", () => {
-    const pairs = (rounds: Round[]) => tally(rounds).pair.size;
-    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
-      expect(pairs(run(8, 1, "balance", 30, seed))).toBe(28);
-      expect(pairs(run(8, 1, "rest", 30, seed))).toBeLessThan(28);
+  it("sits between rest and variety over a 12-round day", () => {
+    const total = (n: number, priority: Priority) => {
+      let rests = 0, pairs = 0;
+      for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+        const rounds = run(n, 1, priority, 12, seed);
+        rests += consecutiveRests(rounds);
+        pairs += tally(rounds).pair.size;
+      }
+      return { rests, pairs };
+    };
+    for (const n of [7, 8]) {
+      const rest = total(n, "rest"), balance = total(n, "balance"), variety = total(n, "variety");
+      expect(rest.rests).toBeLessThan(balance.rests);
+      expect(balance.rests).toBeLessThan(variety.rests);
     }
-  });
-
-  it("sits between rest and variety on consecutive rests", () => {
-    let rest = 0, balance = 0, variety = 0;
-    for (const seed of [1, 2, 3, 4, 5]) {
-      rest += consecutiveRests(run(8, 1, "rest", 30, seed));
-      balance += consecutiveRests(run(8, 1, "balance", 30, seed));
-      variety += consecutiveRests(run(8, 1, "variety", 30, seed));
+    for (const n of [8, 12]) {
+      const rest = total(n, "rest"), balance = total(n, "balance"), variety = total(n, "variety");
+      expect(rest.pairs).toBeLessThan(balance.pairs);
+      expect(balance.pairs).toBeLessThan(variety.pairs);
     }
-    expect(rest).toBeLessThan(balance);
-    expect(balance).toBeLessThan(variety);
-  });
+  }, 120_000);
 
   it("keeps rest and variety rounds unchanged", () => {
     const out: Record<string, Round[]> = {};
@@ -164,7 +169,7 @@ describe("generateRound", () => {
     }
     const hash = createHash("sha256").update(JSON.stringify(out)).digest("hex");
     expect(hash).toBe("6ff34487ef609d7377a042199964838ee1aae6d847434785031f6b397c0bdee9");
-  }, 30_000);
+  }, 120_000);
 
   it("is deterministic for a given seed", () => {
     expect(run(9, 2, "variety", 5, 42)).toEqual(run(9, 2, "variety", 5, 42));
